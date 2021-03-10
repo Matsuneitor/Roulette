@@ -1,0 +1,67 @@
+# All messages are customizable, you can use HEX colors using &#RRGGBB.
+# NOTE: variables don't work in all messages, only those involving them.
+# If you want to send the messages in the action bar, put in the beginning of the message '[AB]'.
+# %game% - the name of the game.
+# %seconds% - the countdown time involved.
+# %bet% - the selected bet of the player.
+# %numbers% - the numbers that belongs to the slot.
+# %chance% - chance of winning.
+# %playing% - amount of players in the game.
+# %max% - the maximum amount of players allowed.
+# %player% - the player involved.
+# %amount% - the amount of winners in the game.
+# %winners% - a list with the names of the winners, separated by commas.
+# %multiplier% - the prize multiplier, depending on the slot.
+# %money% - the money involved.
+messages.invitations:
+  - "&eHey, why don't you come and play? You can earn a lot of money!"
+  - "&eHey you! Come and play a game."
+messages.from-console: "&cThis command can't be executed from the console."
+messages.not-permission: "&cYou don't have permission to execute this command."
+messages.reload: "&6The configuration files have been reloaded."
+messages.create: "&6The game &e%name% &6has been created successfully."
+messages.delete: "&6The game &e%name% &6has been successfully removed."
+messages.purge: "&6The game &e%name% &6and it's armor stands have been purged."
+messages.exist: "&cThe game &7%name% &calready exists."
+messages.unknown: "&cThe &7%name% &cgame doesn't exist."
+messages.starting: "&6Starting the game in &e%seconds% &6seconds..."
+messages.select-bet: "&6Please, select your bet."
+messages.spinning: "&6Spinning the roulette in &e%seconds% &6seconds..."
+messages.out-of-time: "&cYou haven't made your bet, you're out of the game."
+messages.your-bet:
+  - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+  - "&7"
+  - "&eYour bet: %bet% &7%numbers%"
+  - "&6Chance of winning: &b%chance%"
+  - "&7"
+  - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+messages.spinning-start: "&6Spinning..."
+messages.join: "&e%player% &6has joined the game. (&e%playing%&6/&e%max%&6)"
+messages.leave: "&4%player% &chas left the game. (&4%playing%&c/&4%max%&c)"
+messages.no-winner: "&cThe winner is... the casino!"
+messages.winners:
+  - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+  - "&7"
+  - "&eWinners (%amount%): &7%winners%"
+  - "&6What are you waiting to play? You can earn a lot of money!"
+  - "&7"
+  - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+messages.price: "&6¡You won &a%amount% &6(&bx%multiplier% &lMULTIPLIER&6)!"
+messages.restart: "&6Restarting game, please wait..."
+messages.already-ingame: "&c¡You're already in game!"
+messages.already-started: "&cThe game is already started."
+messages.min-required: "&cSorry, but you need at least &a%money% &cto play."
+messages.leave-player: "&cYou've left the game."
+messages.confirm: "&cAre you sure? Shift again to confirm."
+messages.confirm-lose: "&cAre you sure? You'll lose your money, shift again to confirm."
+messages.selected-amount: "&a%money% &6will be taken from your account."
+messages.control: "&7Use the WASD keys to choose a bet."
+messages.creating: "&cYou can only create one table at a time."
+messages.help:
+  - "&7&m---------------------------------------------------"
+  - "&6Roulette &ecommands: &c<required> &f| &9[optional]"
+  - "&f/rlt create <name> <croupier> [type] [min] [max]: &7create a new table."
+  - "&f/rlt delete <name>: &7delete an existing table."
+  - "&f/rlt purge <name>: &7purge the armor stands associated with a game."
+  - "&f/rlt reload: &7reload the files."
+  - "&7&m---------------------------------------------------"

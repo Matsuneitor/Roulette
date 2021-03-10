@@ -1,0 +1,180 @@
+#  _____             _      _   _
+# |  __ \           | |    | | | |
+# | |__) |___  _   _| | ___| |_| |_ ___
+# |  _  // _ \| | | | |/ _ \ __| __/ _ \
+# | | \ \ (_) | |_| | |  __/ |_| ||  __/
+# |_|  \_\___/ \__,_|_|\___|\__|\__\___|
+#
+# Developed by Matsuneitor.
+# v1.0-SNAPSHOT.
+# :)
+
+# Whether or not to receive more messages in the console from this plugin (like progress of loaded games, etc.).
+# This also will show a progress bar to the player when doing /reload to check the progress.
+debug: true
+
+# The maximum distance that a NPC can look.
+look-distance: 15
+
+# Whether or not to allow players to swap chairs before the game starts. If false, you can bypass this with 'roulette.swap_chair' permission.
+# if false, players will be seated next to each other.
+swap-chair: true
+
+# Whether or not to instantly explode the fireworks.
+instant-explode: false
+
+# Whether or not to fix the camera when changing chairs so the player looks forward.
+fix-chair-camera: true
+
+# Whether or not to allow croupiers to look around for players.
+npc-look-around: true
+
+# Whether or not to allow the NPC to imitate the movements made by the target player (@npc-look-around must be true).
+# At the moment, the NPC only imitate the player's hits.
+npc-imitate: true
+
+# Whether or not to allow croupiers to invite nearby players to play a game (@npc-look-around must be true).
+npc-invite: true
+
+# After how long does the NPC invite players to play (in millis).
+invite-interval: 300000
+
+# The allowed time for confirm the leave of the game (in millis), if that time expire, you need to shift twice again.
+leave-confirm-interval: 2000
+
+# The delay before you can move your chip (in millis).
+move-chip-interval: 200
+
+# The material that'll be used as a ball by the croupier.
+croupier-ball: SNOWBALL
+
+# The countdown of each part of the game (in seconds), must be a multiple of 5.
+countdown:
+  # Starts after reaching the minimum amount of players.
+  waiting: 30
+  # Starts at the end of the previous countdown, time for players to choose their bet.
+  selecting: 30
+  # Starts at the end of the previous countdown, where the roulette begins to spin.
+  sorting: 10
+
+# Here you can modify the restart time and the amount of fireworks.
+# Be CAREFUL with this, as the fireworks'll be launched based on the restart time.
+# If you want to restart the game in 5s and launch 10 fireworks, then: 5 / 10 = 0.5, this means that every 0.5s a firework'll be launched.
+# NOTE: Both values​must be a multiple of 5, if you don't want fireworks to be launched, set @fireworks to 0.
+restart:
+  # In how many seconds the game must be restarted.
+  time: 5
+  # How many fireworks'll be launched (only if there're winners).
+  fireworks: 10
+
+# The sound that'll play when you click an item in the chip inventory.
+sound.click: BLOCK_NOTE_BLOCK_PLING
+
+# The sound that'll play along with the countdown messages.
+sound.countdown: ENTITY_EXPERIENCE_ORB_PICKUP
+
+# The sound that'll play when the roulette starts to spin.
+sound.spinning: BLOCK_METAL_PRESSURE_PLATE_CLICK_ON
+
+# The sound that'll play when swapping chairs.
+sound.swap-chair: ENTITY_PLAYER_ATTACK_CRIT
+
+# The sound that'll play when selecting a slot in the table (when moving the chip).
+sound.select: BLOCK_WOOL_PLACE
+
+# The action bar message that'll be sent to the player when creating a table.
+# %percent% - the current percent.
+# %progress-bar% - the progress bar.
+# %game% - the name of the game.
+progress: "&bCreating the game &e%game% &f| &6%percent%% &8&l[%progress-bar%&8&l]"
+
+# The caracter used in the progress bar, only one character allowed.
+progress-character: "▌"
+
+# Name to display in the hologram of each slot.
+# %number% - the number if the slot is single.
+slots:
+  single:
+    zero: "&a&l%number% &a(Green)"
+    red: "&c&l%number% &c(Red)"
+    black: "&0&l%number% &0(Black)"
+  column:
+    1: "&6&l1st &6(column)"
+    2: "&6&l2nd &6(column)"
+    3: "&6&l3rd &6(column)"
+  dozen:
+    1: "&6&l1st &6(dozen)"
+    2: "&6&l2nd &6(dozen)"
+    3: "&6&l3rd &6(dozen)"
+  other:
+    low: "&6&l1-18 &6(Low)"
+    high: "&6&l19-36 &6(High)"
+    even: "&6&l2, 4... &6(Even)"
+    odd: "&6&l1, 3... &6(Odd)"
+    red: "&c&lRed"
+    black: "&0&lBlack"
+
+# The name of the %type% variable depending of the type of the game for the join hologram.
+type.european: "&a(European)"
+type.american: "&a(American)"
+
+# The hologram to join the game, players must click on the last line.
+# %name% - the name of the game.
+# %playing% - amount of players in the game.
+# %max% - the maximum amount of players allowed.
+# %type% - the type of the table, can be european or american (see @join-hologram.european and @join-hologram.american).
+join-hologram:
+  - "%type%"
+  - "&e%name% &e(%playing%/%max%)"
+  - "&u&l¡CLICK TO PLAY!"
+
+# The line that'll appear on the spinning hologram.
+spin-holograms:
+  spinning: "&6Spinning..."
+  winning-number: "&uWinning number:"
+
+# The hologram that'll appear above the player's chip.
+# %player% - the name of the player.
+# %bet% - the selected bet of the player.
+select-hologram:
+  - "&e%player%"
+  - "&aBET: %bet%"
+
+# This item replaces the shop chip that is clicked without having enough money.
+not-enough-money:
+  material: BARRIER
+  display-name: "&c¡NOT ENOUGH MONEY!"
+  lore: []
+
+# Here you can modify each item within the inventory of purchase of chips.
+# %page% - the current page.
+# %max% - the amount of pages.
+# %money% - the money involved.
+shop:
+  title: "Chips (page %page%/%max%)"
+  chip:
+    display-name: "&a%money%"
+    lore:
+      - "&7Click to buy one chip."
+  previous:
+    url: "bd69e06e5dadfd84e5f3d1c21063f2553b2fa945ee1d4d7152fdc5425bc12a9"
+    material: PLAYER_HEAD
+    display-name: "&6Previous"
+    lore:
+      - "&7Click to go to the previous page."
+  money:
+    url: "6e7e3e8ab060e64d0256b3688e62d433eab341a157f2a733ed43450fee4e7264"
+    material: PLAYER_HEAD
+    display-name: "&6Your wallet: &e%money%"
+    lore: []
+  exit:
+    material: BARRIER
+    display-name: "&cExit"
+    lore:
+      - "&7Click to exit the game."
+  next:
+    url: "19bf3292e126a105b54eba713aa1b152d541a1d8938829c56364d178ed22bf"
+    material: PLAYER_HEAD
+    display-name: "&6Next"
+    lore:
+      - "&7Click to go to the next page."

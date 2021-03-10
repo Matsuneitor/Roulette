@@ -1,0 +1,13 @@
+name: Roulette
+version: ${project.version}
+main: me.matsubara.roulette.Roulette
+api-version: 1.13
+authors: [Matsubara]
+description: The classic casino game now in Minecraft, no need for texture packs.
+depend: [Citizens, HolographicDisplays, ProtocolLib, Vault]
+
+commands:
+  roulette:
+    descripcion: main command.
+    usage: /<command>
+    aliases: [rlt]
