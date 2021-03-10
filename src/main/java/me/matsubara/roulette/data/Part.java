@@ -269,6 +269,10 @@ public enum Part {
         return isMaterial() ? url.substring(9) : url;
     }
 
+    public static int getSize(boolean isEuropean) {
+        return isEuropean ? EUROPEAN.length : AMERICAN.length;
+    }
+
     public double getOffsetX() {
         return offsetX;
     }
@@ -283,9 +287,5 @@ public enum Part {
 
     public static Part[] getValues(boolean isEuropean) {
         return isEuropean ? EUROPEAN : AMERICAN;
-    }
-
-    public static int getSize(boolean isEuropean) {
-        return isEuropean ? EUROPEAN.length : AMERICAN.length;
     }
 }

@@ -273,14 +273,15 @@ public final class Game {
     }
 
     private void loadNPC() {
+        String name = npcName == null ? "" : RUtilities.translate(npcName);
         // If UUID provided is null, then the NPC doesn't exist; if so, we create one, otherwise, we load it.
         if (npcUUID == null) {
-            this.npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, npcName == null ? "" : RUtilities.translate(npcName));
+            this.npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, name);
             this.npcUUID = npc.getUniqueId();
         } else {
             this.npc = CitizensAPI.getNPCRegistry().getByUniqueId(npcUUID);
             if (this.npc == null) {
-                this.npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, npcName == null ? "" : RUtilities.translate(npcName));
+                this.npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, name);
             } else {
                 this.npcName = this.npc.getFullName();
             }
@@ -683,11 +684,6 @@ public final class Game {
         broadcast(plugin.getMessages().getRestart());
     }
 
-    /**
-     * Spawn random fireworks at certain location.
-     *
-     * @param location where to spawnn the fireworks.
-     */
     private void spawnFirework(Location location) {
         Validate.notNull(location.getWorld(), "World can't be null.");
         ThreadLocalRandom random = ThreadLocalRandom.current();
@@ -804,17 +800,15 @@ public final class Game {
         }
 
         if (show) {
-            if (selected.get(uuid).getValue().getEquipment() != null) {
-                Chip chip = chips.get(uuid);
-                if (chip == null) {
-                    return;
-                }
-                ArmorStand armorStand = selected.get(uuid).getValue();
-                if (armorStand.getEquipment() == null) {
-                    return;
-                }
-                armorStand.getEquipment().setItemInMainHand(RUtilities.createHead(chip.getUrl()));
-            }
+            if (selected.get(uuid).getValue().getEquipment() == null) return;
+
+            Chip chip = chips.get(uuid);
+            if (chip == null) return;
+
+            ArmorStand armorStand = selected.get(uuid).getValue();
+            if (armorStand.getEquipment() == null) return;
+
+            armorStand.getEquipment().setItemInMainHand(RUtilities.createHead(chip.getUrl()));
             return;
         }
 

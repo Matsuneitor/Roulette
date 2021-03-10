@@ -2,7 +2,6 @@ package me.matsubara.roulette.data;
 
 import org.apache.commons.lang.ArrayUtils;
 
-@SuppressWarnings("unused")
 public enum Slot {
     // Slots of the table, from 0 to 36.
     SINGLE_0(0),

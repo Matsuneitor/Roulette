@@ -105,8 +105,10 @@ public final class GUI {
         // Where to start
         int startFrom = current * slots.size();
 
-        // Populate inventory.
+        // Required namespaces.
         NamespacedKey keyMoney = new NamespacedKey(plugin, "fromRouletteMoney"), keyChip = new NamespacedKey(plugin, "fromRouletteChip");
+
+        // Populate inventory.
         for (int index = 0, aux = startFrom; isLast() ? index < plugin.getChips().getList().size() - startFrom : index < slots.size(); index++, aux++) {
             Chip chip = plugin.getChips().getList().get(aux);
 

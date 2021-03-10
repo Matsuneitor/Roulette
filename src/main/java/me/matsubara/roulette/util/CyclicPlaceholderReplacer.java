@@ -17,9 +17,7 @@ public final class CyclicPlaceholderReplacer implements PlaceholderReplacer {
         String result = frames[index];
 
         index++;
-        if (index >= frames.length) {
-            index = 0;
-        }
+        if (index >= frames.length) index = 0;
 
         return result;
     }

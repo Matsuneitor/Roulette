@@ -90,9 +90,7 @@ public final class InventoryClick implements Listener {
             String chipName = current.getItemMeta().getPersistentDataContainer().get(keyChip, PersistentDataType.STRING);
 
             // If somehow the store value is null, return.
-            if (chipName == null) {
-                return;
-            }
+            if (chipName == null) return;
 
             // Set the clicked chip to the player and show it in the game.
             game.getChips().put(player.getUniqueId(), plugin.getChips().getByName(chipName));
