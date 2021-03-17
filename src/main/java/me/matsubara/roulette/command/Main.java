@@ -4,6 +4,7 @@ import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.game.GameData;
 import me.matsubara.roulette.game.GameType;
+import me.matsubara.roulette.trait.LookCloseModified;
 import me.matsubara.roulette.util.RUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.bukkit.Location;
@@ -60,10 +61,22 @@ public final class Main implements CommandExecutor, TabCompleter {
             }
             plugin.getLogger().info("Reloading " + plugin.getDescription().getFullName());
 
+            int temp = plugin.getConfiguration().getLookDistance();
+
             plugin.reloadConfig();
             plugin.getChips().reloadConfig();
             plugin.getGames().reloadConfig(player);
             plugin.getMessages().reloadConfig();
+
+            int current = plugin.getConfiguration().getLookDistance();
+
+            // If the look distance has changed, we update it to every game.
+            if (temp != current) {
+                for (Game game : plugin.getGames().getGamesSet()) {
+                    if (game.getNPC() == null) continue;
+                    game.getNPC().getOrAddTrait(LookCloseModified.class).setRange(current);
+                }
+            }
 
             RUtils.handleMessage(player, plugin.getMessages().getReload());
             return true;

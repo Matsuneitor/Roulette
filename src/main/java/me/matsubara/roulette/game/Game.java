@@ -43,12 +43,15 @@ public final class Game {
 
     private final Roulette plugin;
 
+    // Static variables, needed for all games.
+    public final static String S_PLAYING = "{%s-playing}", S_BET = "{%s-bet}";
+    public final static Set<UUID> CREATING = new HashSet<>();
+    public final static int[] TIMESTAMP = {1, 25, 50, 75, 100};
+
     // Game settings.
     private final String name;
     private int minPlayers, maxPlayers;
     private final Location location;
-    // Static variables, needed for all games.
-    public final static String S_PLAYING = "{%s-playing}", S_BET = "{%s-bet}";
     private final GameData data;
     // Creation properties.
     private boolean isDone;
@@ -90,8 +93,6 @@ public final class Game {
     private final Color[] colors;
     private final BlockFace[] faces;
     private Integer task;
-    public final static Set<UUID> CREATING = new HashSet<>();
-    public final static int[] TIMESTAMP = {1, 25, 50, 75, 100};
 
     public Game(Roulette plugin, GameData data) {
         this.plugin = plugin;
@@ -967,6 +968,9 @@ public final class Game {
 
     public void setWaiting() {
         state = GameState.WAITING;
+        // Show the join hologram to every player.
+        joinHologram.getVisibilityManager().setVisibleByDefault(true);
+        joinHologram.getVisibilityManager().resetVisibilityAll();
     }
 
     public void setCountdown() {
