@@ -5,7 +5,7 @@ import com.cryptomorin.xseries.XSound;
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.data.Slot;
 import me.matsubara.roulette.game.Game;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
 import net.citizensnpcs.api.trait.trait.Equipment;
 import net.citizensnpcs.util.PlayerAnimation;
 import org.apache.commons.lang.Validate;
@@ -36,15 +36,14 @@ public final class Selecting extends BukkitRunnable {
 
             // Check if the players selected a chip.
             for (UUID uuid : game.getPlayers()) {
-                Player player = Bukkit.getPlayer(uuid);
-
                 // If somehow player is null (maybe disconnected), continue.
+                Player player = Bukkit.getPlayer(uuid);
                 if (player == null) continue;
 
                 // If the player didn't select a chip, close inventory and remove from the game.
                 if (!game.getSelected().containsKey(player.getUniqueId())) {
                     game.removePlayer(player, false);
-                    RUtilities.handleMessage(player, plugin.getMessages().getOutOfTime());
+                    RUtils.handleMessage(player, plugin.getMessages().getOutOfTime());
                     player.getOpenInventory().close();
                     continue;
                 }
@@ -52,22 +51,20 @@ public final class Selecting extends BukkitRunnable {
                 // Show the bet to the player.
                 Slot selected = game.getSelected().get(player.getUniqueId()).getKey();
                 String numbers = selected.isDoubleZero() ? "[00]" : Arrays.toString(selected.getInts());
-                for (String line : plugin.getMessages().getYourBet(RUtilities.getSlotName(selected), numbers, selected.getChance(game.getType().isEuropean()))) {
+                for (String line : plugin.getMessages().getYourBet(RUtils.getSlotName(selected), numbers, selected.getChance(game.getType().isEuropean()))) {
                     player.sendMessage(line);
                 }
             }
 
             // If there aren't players left in the game, return.
-            if (game.getPlayers().isEmpty()) {
-                return;
-            }
+            if (game.getPlayers().isEmpty()) return;
 
             // Hide holograms to the players so everyone can see the spinning hologram.
             for (UUID uuid : game.getHolograms().keySet()) {
                 Player owner = Bukkit.getPlayer(uuid);
-                if (owner != null) {
-                    game.getHolograms().get(uuid).getVisibilityManager().hideTo(owner);
-                }
+                if (owner == null) continue;
+
+                game.getHolograms().get(uuid).getVisibilityManager().hideTo(owner);
             }
 
             // Start sorting runnable.

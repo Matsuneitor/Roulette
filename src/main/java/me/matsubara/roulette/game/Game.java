@@ -16,7 +16,7 @@ import me.matsubara.roulette.runnable.Selecting;
 import me.matsubara.roulette.runnable.Sorting;
 import me.matsubara.roulette.runnable.Starting;
 import me.matsubara.roulette.trait.LookCloseModified;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.trait.trait.Equipment;
@@ -26,10 +26,11 @@ import org.apache.commons.lang.Validate;
 import org.bukkit.*;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 
@@ -46,6 +47,10 @@ public final class Game {
     private final String name;
     private int minPlayers, maxPlayers;
     private final Location location;
+    // Static variables, needed for all games.
+    public final static String S_PLAYING = "{%s-playing}", S_BET = "{%s-bet}";
+    private final GameData data;
+    // Creation properties.
     private boolean isDone;
 
     // Required sets.
@@ -67,6 +72,7 @@ public final class Game {
     // Game runnables.
     private Starting start;
     private Selecting select;
+
     private Sorting sort;
 
     // NPC data.
@@ -83,19 +89,19 @@ public final class Game {
 
     private final Color[] colors;
     private final BlockFace[] faces;
-
-    // Static variables, needed for all games.
-    public final static String PLACEHOLDER = "{%s-playing}";
+    private Integer task;
     public final static Set<UUID> CREATING = new HashSet<>();
     public final static int[] TIMESTAMP = {1, 25, 50, 75, 100};
 
-    public Game(Roulette plugin, String name, Location location, @Nullable String npcName, @Nullable UUID npcUUID, int minPlayers, int maxPlayers, GameType type) {
+    public Game(Roulette plugin, GameData data) {
         this.plugin = plugin;
 
-        this.name = name;
-        this.minPlayers = (minPlayers < 1) ? 1 : Math.min(minPlayers, 10);
-        this.maxPlayers = maxPlayers < minPlayers ? (minPlayers == 10 ? 10 : minPlayers + 1) : Math.min(maxPlayers, 10);
-        this.location = location;
+        this.name = data.getName();
+        setLimitPlayers(data.getMinPlayers(), data.getMaxPlayers());
+        this.location = data.getLocation();
+
+        this.data = data;
+
         this.isDone = false;
 
         this.players = new HashSet<>();
@@ -110,94 +116,89 @@ public final class Game {
 
         this.chairs = new ArrayList<>();
 
-        this.npcName = npcName;
-        this.npcUUID = npcUUID;
+        this.npc = null;
+        this.npcName = data.getNPCName();
+        this.npcUUID = data.getNPCUUID();
 
-        String placeholder = String.format(PLACEHOLDER, name);
+        String placeholder = String.format(S_PLAYING, name);
         HologramsAPI.registerPlaceholder(plugin, placeholder, 1.0d, () -> String.valueOf(players.size()));
         placeholders.add(placeholder);
 
-        Location l_join = location.clone().add(RUtilities.offsetVector(new Vector(1.17d, 3.5d, -0.585d), location.getYaw(), location.getPitch()));
-        this.joinHologram = HologramsAPI.createHologram(plugin, l_join);
+        Location join = location.clone().add(RUtils.offsetVector(new Vector(1.17d, 3.5d, -0.585d), location.getYaw(), location.getPitch()));
+        this.joinHologram = HologramsAPI.createHologram(plugin, join);
         this.joinHologram.setAllowPlaceholders(true);
 
-        Location l_spin = location.clone().add(RUtilities.offsetVector(new Vector(-0.88d, 3.235d, -0.875d), location.getYaw(), location.getPitch()));
-        this.spinHologram = HologramsAPI.createHologram(plugin, l_spin);
+        Location spin = location.clone().add(RUtils.offsetVector(new Vector(-0.88d, 3.235d, -0.875d), location.getYaw(), location.getPitch()));
+        this.spinHologram = HologramsAPI.createHologram(plugin, spin);
         this.spinHologram.setAllowPlaceholders(true);
 
         // If the type is changed wrong from games.yml, set AMERICAN by default.
-        this.type = type == null ? GameType.AMERICAN : type;
+        this.type = data.getType() == null ? GameType.AMERICAN : data.getType();
         this.state = GameState.WAITING;
 
         this.colors = getColors();
-        this.faces = RUtilities.getCorrectFacing(RUtilities.faceFromYaw(location.getYaw(), false));
-    }
+        this.faces = RUtils.getCorrectFacing(RUtils.faceFromYaw(location.getYaw(), false));
 
-    public void createGame(@Nullable Player creator, boolean shouldSave) {
+        Player creator = data.getCreator();
         if (creator != null) CREATING.add(creator.getUniqueId());
-        new BukkitRunnable() {
+
+        this.task = new BukkitRunnable() {
             int index = 0;
 
             @Override
             public void run() {
-                createGamePart(this, index, creator, shouldSave);
+                createGamePart(index, creator);
                 index++;
             }
-
-        }.runTaskTimer(plugin, 0L, 6L);
+        }.runTaskTimer(plugin, 0L, 0L).getTaskId();
     }
 
-    private void createGamePart(BukkitRunnable runnable, int index, @Nullable Player creator, boolean shouldSave) {
-        if (index == Part.getSize(type.isEuropean()) - 1) {
+    @SuppressWarnings({"deprecation", "ConstantConditions"})
+    private void createGamePart(int index, @Nullable Player creator) {
+        if (index == 0) plugin.getGames().saveGame(this);
+
+        int size = Part.getSize(type.isEuropean());
+
+        if (index == size - 1) {
             // Join hologram will appear when the whole table is ready.
-            setupJoinHologram(String.format(PLACEHOLDER, name));
+            setupJoinHologram(String.format(S_PLAYING, name));
 
             // Send created message to the crator.
             if (creator != null && creator.isOnline()) {
-                RUtilities.handleMessage(creator, plugin.getMessages().getCreate(name));
+                RUtils.handleMessage(creator, plugin.getMessages().getCreate(name));
             }
 
             // Load NPC after, since Citizens load NPC's later (or that's what I heard).
             loadNPC();
 
             if (creator != null) CREATING.remove(creator.getUniqueId());
-            if (shouldSave) plugin.getGames().saveGame(this);
+            plugin.getGames().saveGame(this);
+            plugin.getGames().createNextName();
             this.isDone = true;
-            runnable.cancel();
+
+            if (task == null) return;
+
+            BukkitScheduler scheduler = plugin.getServer().getScheduler();
+            if (scheduler.isQueued(task) || scheduler.isCurrentlyRunning(task)) {
+                plugin.getServer().getScheduler().cancelTask(task);
+            }
         }
 
         Part part = Part.getValues(type.isEuropean())[index];
 
         Vector offset = new Vector(part.getOffsetX(), part.getOffsetY(), part.getOffsetZ());
-        Location newLocation = location.clone().add(RUtilities.offsetVector(offset, location.getYaw(), location.getPitch()));
+        Location newLocation = location.clone().add(RUtils.offsetVector(offset, location.getYaw(), location.getPitch()));
 
         // Set rotation of the chair, so the player looks to the front.
-        if (isTopChair(part)) {
-            newLocation.setDirection(faces[chairs.size()].getDirection());
-        }
+        if (isTopChair(part)) newLocation.setDirection(RUtils.getDirection(faces[chairs.size()]));
 
         // Rotate first spinner to make it look realistic.
-        if (part.isSpinner() && part.isFirstSpinner()) {
-            newLocation.setYaw(newLocation.getYaw() + 90.0f);
-        }
+        if (part.isSpinner() && part.isFirstSpinner()) newLocation.setYaw(newLocation.getYaw() + 90.0f);
 
         Validate.notNull(location.getWorld(), "World can't be null.");
 
-        ArmorStand stand = location.getWorld().spawn(newLocation, ArmorStand.class, armorStand -> {
-            armorStand.setAI(false);
-            armorStand.setCollidable(false);
-            armorStand.setCanPickupItems(false);
-            armorStand.setVisible(false);
-            armorStand.setGravity(false);
-            armorStand.setPersistent(false);
-            armorStand.setRemoveWhenFarAway(false);
-            armorStand.setSilent(true);
-            armorStand.setInvulnerable(true);
-        });
-
-        if (stand.getEquipment() == null) {
-            return;
-        }
+        ArmorStand stand = location.getWorld().spawn(newLocation, ArmorStand.class, this::modifyArmorStand);
+        if (stand.getEquipment() == null) return;
 
         boolean isChair = false, isSlot = false;
 
@@ -205,9 +206,9 @@ public final class Game {
             stand.setSmall(true);
             stand.setVisible(part.isSpinner());
             stand.setBasePlate(!part.isSpinner());
-        } else if (part.getMaterial() != null) {
-            stand.getEquipment().setHelmet(new ItemStack(part.getMaterial()));
-            switch (part.getMaterial()) {
+        } else if (part.isMaterial()) {
+            stand.getEquipment().setHelmet(part.getXMaterial().parseItem());
+            switch (part.getXMaterial()) {
                 case SPRUCE_SLAB:
                     if (part.isChair()) {
                         stand.setHeadPose(new EulerAngle(Math.toRadians(0.0d), 0.0d, 0.0d));
@@ -230,20 +231,23 @@ public final class Game {
                     break;
             }
         } else if (part.isSlot() || part.isDecoration()) {
-            stand.getEquipment().setItemInMainHand(part.isDecoration() ? RUtilities.createHead(part.getUrl()) : null);
+            stand.getEquipment().setItemInHand(part.isDecoration() ? RUtils.createHead(part.getUrl()) : null);
             stand.setSmall(true);
             stand.setRightArmPose(new EulerAngle(Math.toRadians(315.0d), Math.toRadians(45.0d), 0.0d));
             isSlot = part.isSlot();
         } else {
             stand.setHeadPose(new EulerAngle(Math.toRadians(0.0d), 0.0d, 0.0d));
-            stand.getEquipment().setHelmet(RUtilities.createHead(part.getUrl()));
+            stand.getEquipment().setHelmet(RUtils.createHead(part.getUrl()));
         }
 
-        stand.getPersistentDataContainer().set(new NamespacedKey(plugin, "fromRoulette"), PersistentDataType.STRING, name);
+        PersistentDataContainer container = stand.getPersistentDataContainer();
+
+        NamespacedKey key = new NamespacedKey(plugin, "fromRoulette");
+        container.set(key, PersistentDataType.STRING, name);
 
         if (isChair) {
-            NamespacedKey chairKey = new NamespacedKey(plugin, "fromRouletteChair");
-            stand.getPersistentDataContainer().set(chairKey, PersistentDataType.INTEGER, chairs.size());
+            key = new NamespacedKey(plugin, "fromRouletteChair");
+            container.set(key, PersistentDataType.INTEGER, chairs.size());
             chairs.add(stand);
         } else if (isSlot) {
             slots.put(Slot.getValues(type.isEuropean())[slots.size()], stand);
@@ -251,93 +255,95 @@ public final class Game {
             parts.put(part, stand);
         }
 
-        if (!plugin.getConfiguration().enableDebug()) {
-            return;
-        }
+        if (!plugin.getConfiguration().enableDebug()) return;
 
-        index++;
-
-        int size = Part.getSize(type.isEuropean()), percent = (int) ((int) Math.round((index * 100.0d / size) * 10.0d) / 10.0d);
+        int percent = (int) ((int) Math.round(((index + 1) * 100.0d / size) * 10.0d) / 10.0d);
 
         if (creator != null && creator.isOnline()) {
-            String progress = getProgressBar(index, size, 25, plugin.getConfiguration().getProgressChar(), ChatColor.GREEN, ChatColor.GRAY);
-            ActionBar.sendActionBar(creator, plugin.getConfiguration().getProgress(percent, progress, name));
+            String progress = getProgressBar(index + 1, size, 30, plugin.getConfiguration().getProgressCharacter(), ChatColor.GREEN, ChatColor.GRAY);
+            ActionBar.sendActionBar(creator, plugin.getConfiguration().getProgress(percent, progress, name, plugin.getGames().getGameDatas().size()));
         }
 
-        if (ArrayUtils.contains(TIMESTAMP, percent)) {
-            plugin.getLogger().info("The game " + name + " is being created: " + percent + "%");
-            if (percent == 100) {
-                plugin.getLogger().info("The game " + name + " has been created successfully.");
-            }
+        if (!ArrayUtils.contains(TIMESTAMP, percent)) return;
+
+        plugin.getLogger().info(String.format("The game \"%s\" is being created: %s%%", name, percent));
+
+        if (percent == 100) {
+            plugin.getLogger().info(String.format("The game \"%s\" has been created successfully.", name));
         }
     }
 
+    private void modifyArmorStand(ArmorStand stand) {
+        stand.setAI(false);
+        stand.setCollidable(false);
+        stand.setInvulnerable(true);
+        stand.setPersistent(false);
+        stand.setRemoveWhenFarAway(false);
+        stand.setSilent(true);
+        stand.setCanPickupItems(false);
+        stand.setVisible(false);
+        stand.setGravity(false);
+    }
+
     private void loadNPC() {
-        String name = npcName == null ? "" : RUtilities.translate(npcName);
         // If UUID provided is null, then the NPC doesn't exist; if so, we create one, otherwise, we load it.
-        if (npcUUID == null) {
-            this.npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, name);
-            this.npcUUID = npc.getUniqueId();
-        } else {
-            this.npc = CitizensAPI.getNPCRegistry().getByUniqueId(npcUUID);
-            if (this.npc == null) {
-                this.npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, name);
-            } else {
-                this.npcName = this.npc.getFullName();
-            }
-        }
+        npcName = (npcName == null) ? "" : RUtils.translate(npcName);
+
+        if (npcUUID != null) npc = CitizensAPI.getNPCRegistry().getByUniqueId(npcUUID);
+        if (npc == null) npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, npcName);
+
+        npcName = npc.getFullName();
+        npcUUID = npc.getUniqueId();
 
         // Setup NPC location.
-        Location l_npc = location.clone().add(RUtilities.offsetVector(new Vector(-1.275d, 1.0d, 0.55d), location.getYaw(), location.getPitch()));
-        l_npc.setDirection(faces[0].getDirection());
+        Location where = location.clone().add(RUtils.offsetVector(new Vector(-1.275d, 1.0d, 0.55d), location.getYaw(), location.getPitch()));
+        where.setDirection(RUtils.getDirection(faces[0]));
 
         // Spawn the NPC if isn't spawned.
-        if (!this.npc.isSpawned()) {
-            this.npc.spawn(l_npc);
-        }
+        if (!npc.isSpawned()) npc.spawn(where);
 
         // Set item in hand.
-        this.npc.getOrAddTrait(Equipment.class).set(Equipment.EquipmentSlot.HAND, plugin.getConfiguration().getBall());
+        npc.getOrAddTrait(Equipment.class).set(Equipment.EquipmentSlot.HAND, plugin.getConfiguration().getBall());
 
         // Set NPC look around for players.
         if (plugin.getConfiguration().npcLookAround()) {
-            this.npc.getOrAddTrait(LookCloseModified.class).setGame(this);
-            this.npc.getOrAddTrait(LookCloseModified.class).setRealisticLooking(true);
-            this.npc.getOrAddTrait(LookCloseModified.class).setRange(plugin.getConfiguration().getLookDistance());
+            npc.getOrAddTrait(LookCloseModified.class).setGame(this);
+            npc.getOrAddTrait(LookCloseModified.class).setRealisticLooking(true);
+            npc.getOrAddTrait(LookCloseModified.class).setRange(plugin.getConfiguration().getLookDistance());
         }
 
         // Hide NPC name if no name was supplied.
         if (npcName == null || npcName.equalsIgnoreCase("")) {
-            this.npc.data().setPersistent(NPC.NAMEPLATE_VISIBLE_METADATA, false);
+            npc.data().setPersistent(NPC.NAMEPLATE_VISIBLE_METADATA, false);
         }
 
         // Start LookCloseModified after spawning every armor stand.
         if (plugin.getConfiguration().npcLookAround()) {
-            Game.this.npc.getOrAddTrait(LookCloseModified.class).lookClose(true);
+            npc.getOrAddTrait(LookCloseModified.class).lookClose(true);
         }
     }
 
     public String getProgressBar(int current, int max, int bars, char symbol, ChatColor completed, ChatColor notCompleted) {
         float percent = (float) current / max;
-        int progressBars = (int) (bars * percent);
+        int totalBars = (int) (bars * percent);
 
-        return Strings.repeat("" + completed + symbol, progressBars) + Strings.repeat("" + notCompleted + symbol, bars - progressBars);
+        return Strings.repeat("" + completed + symbol, totalBars) + Strings.repeat("" + notCompleted + symbol, bars - totalBars);
     }
 
     public void setupJoinHologram(String placeholder) {
-        if (joinHologram.size() > 0) {
-            joinHologram.clearLines();
-        }
+        if (joinHologram.size() > 0) joinHologram.clearLines();
+
+        String type = this.type.isEuropean() ? plugin.getConfiguration().getEuropeanType() : plugin.getConfiguration().getAmericanType();
+
         List<String> lines = plugin.getConfiguration().getJoinHologram();
         for (String line : lines) {
             TextLine text = joinHologram.appendTextLine(line
                     .replaceAll("%name%", name)
                     .replaceAll("%playing%", placeholder)
                     .replaceAll("%max%", String.valueOf(maxPlayers))
-                    .replaceAll("%type%", type.isEuropean() ? plugin.getConfiguration().getEuropeanType() : plugin.getConfiguration().getAmericanType()));
-            if (lines.indexOf(line) == (lines.size() - 1)) {
-                text.setTouchHandler(new TouchHandler(plugin, this));
-            }
+                    .replaceAll("%type%", type));
+
+            if (lines.indexOf(line) == (lines.size() - 1)) text.setTouchHandler(new TouchHandler(plugin, this));
         }
     }
 
@@ -346,19 +352,19 @@ public final class Game {
 
         List<Color> results = new ArrayList<>();
         for (Field field : fields) {
-            if (field.getType().equals(Color.class)) {
-                try {
-                    results.add((Color) field.get(null));
-                } catch (IllegalAccessException exception) {
-                    exception.printStackTrace();
-                }
+            if (!field.getType().equals(Color.class)) continue;
+
+            try {
+                results.add((Color) field.get(null));
+            } catch (IllegalAccessException exception) {
+                exception.printStackTrace();
             }
         }
         return results.toArray(new Color[0]);
     }
 
     public boolean isTopChair(Part part) {
-        return part.isMaterial() && part.getMaterial() == XMaterial.SPRUCE_SLAB.parseMaterial() && part.isChair();
+        return part.getXMaterial() != null && part.getXMaterial() == XMaterial.SPRUCE_SLAB && part.isChair();
     }
 
     public boolean spaceAvailable() {
@@ -378,27 +384,19 @@ public final class Game {
     }
 
     public void addPlayer(Player player) {
-        if (!spaceAvailable()) {
-            return;
-        }
+        if (!spaceAvailable()) return;
 
-        if (inGame(player)) {
-            return;
-        }
+        if (inGame(player)) return;
 
         joinHologram.getVisibilityManager().hideTo(player);
         players.add(player.getUniqueId());
         nextChair(player);
 
-        if (players.size() == minPlayers) {
-            start();
-        }
+        if (players.size() == minPlayers) start();
     }
 
     public void removePlayer(Player player, boolean isRestart) {
-        if (!inGame(player)) {
-            return;
-        }
+        if (!inGame(player)) return;
 
         if (isRestart || players.size() == 1 || (state.isWaiting() || (state.isCountdown() && players.size() < minPlayers))) {
             joinHologram.getVisibilityManager().showTo(player);
@@ -410,9 +408,7 @@ public final class Game {
 
         removePlayerHologram(player);
 
-        if (player.isInsideVehicle()) {
-            player.leaveVehicle();
-        }
+        if (player.isInsideVehicle()) player.leaveVehicle();
 
         // Players are removed with a iterator in @restart, and we don't need to send a message to every player about it if restarting.
         if (!isRestart) {
@@ -420,61 +416,50 @@ public final class Game {
             broadcast(plugin.getMessages().getLeaveMessage(player.getName(), size(), maxPlayers));
         }
 
-        if (players.isEmpty() && !state.isWaiting() && !state.isEnding()) {
-            restart();
-        }
+        if (players.isEmpty() && !state.isWaiting() && !state.isEnding()) restart();
     }
 
     public void broadcast(String message) {
         for (UUID uuid : players) {
             Player player = Bukkit.getPlayer(uuid);
-            if (player == null) {
-                return;
-            }
-            RUtilities.handleMessage(player, RUtilities.translate(message));
+            if (player == null) return;
+
+            RUtils.handleMessage(player, RUtils.translate(message));
         }
     }
 
     public void broadcast(List<String> messages) {
         for (UUID uuid : players) {
             Player player = Bukkit.getPlayer(uuid);
-            if (player == null) {
-                return;
-            }
+            if (player == null) return;
+
             for (String line : messages) {
-                player.sendMessage(RUtilities.translate(line));
+                player.sendMessage(RUtils.translate(line));
             }
         }
     }
 
     private void removePlayerHologram(Player player) {
-        if (!holograms.containsKey(player.getUniqueId())) {
-            return;
-        }
-        String placeholder = String.format("{%s-bet}", player.getName());
+        if (!holograms.containsKey(player.getUniqueId())) return;
+
+        String placeholder = String.format(S_BET, player.getName());
         HologramsAPI.unregisterPlaceholder(plugin, placeholder);
         holograms.get(player.getUniqueId()).delete();
         holograms.remove(player.getUniqueId());
     }
 
     public void previousChair(Player player) {
-        if (!isChairAvailable()) {
-            return;
-        }
+        if (!isChairAvailable()) return;
 
-        if (player.getVehicle() == null) {
-            return;
-        }
+        if (player.getVehicle() == null) return;
+
+        PersistentDataContainer container = player.getVehicle().getPersistentDataContainer();
 
         NamespacedKey key = new NamespacedKey(plugin, "fromRouletteChair");
-        if (!player.getVehicle().getPersistentDataContainer().has(key, PersistentDataType.INTEGER)) {
-            return;
-        }
+        if (!container.has(key, PersistentDataType.INTEGER)) return;
 
-        Integer ordinal = player.getVehicle().getPersistentDataContainer().get(key, PersistentDataType.INTEGER);
-        if (ordinal == null) {
-            return;
-        }
+        Integer ordinal = container.get(key, PersistentDataType.INTEGER);
+        if (ordinal == null) return;
 
         ArmorStand chair;
         do {
@@ -483,54 +468,45 @@ public final class Game {
                 ordinal = chairs.size() - 1;
             }
             chair = chairs.get(ordinal);
-        } while (!chair.getPassengers().isEmpty());
+        } while (hasPassengers(chair));
 
         Location location = player.getLocation().setDirection(chair.getLocation().getDirection());
+
         if (plugin.getConfiguration().fixChairCamera()) {
             player.teleport(location);
         }
 
         XSound.play(location, plugin.getConfiguration().getSwapSound());
-        chair.addPassenger(player);
+        addPassenger(chair, player);
     }
 
     public void nextChair(Player player) {
-        if (!isChairAvailable()) {
-            return;
-        }
+        if (!isChairAvailable()) return;
 
         // If player isn't in a chair, put him on the first empty chair.
         if (!player.isInsideVehicle()) {
             for (ArmorStand chair : chairs) {
-                if (!chair.getPassengers().isEmpty()) {
-                    continue;
-                }
+                if (hasPassengers(chair)) continue;
 
                 Location location = player.getLocation().clone().setDirection(chair.getLocation().getDirection());
-                if (plugin.getConfiguration().fixChairCamera()) {
-                    player.teleport(location);
-                }
+                if (plugin.getConfiguration().fixChairCamera()) player.teleport(location);
 
                 XSound.play(location, plugin.getConfiguration().getSwapSound());
-                chair.addPassenger(player);
+                addPassenger(chair, player);
                 break;
             }
             return;
         }
 
-        if (player.getVehicle() == null) {
-            return;
-        }
+        if (player.getVehicle() == null) return;
+
+        PersistentDataContainer container = player.getVehicle().getPersistentDataContainer();
 
         NamespacedKey key = new NamespacedKey(plugin, "fromRouletteChair");
-        if (!player.getVehicle().getPersistentDataContainer().has(key, PersistentDataType.INTEGER)) {
-            return;
-        }
+        if (!container.has(key, PersistentDataType.INTEGER)) return;
 
-        Integer ordinal = player.getVehicle().getPersistentDataContainer().get(key, PersistentDataType.INTEGER);
-        if (ordinal == null) {
-            return;
-        }
+        Integer ordinal = container.get(key, PersistentDataType.INTEGER);
+        if (ordinal == null) return;
 
         ArmorStand chair;
         do {
@@ -539,32 +515,47 @@ public final class Game {
                 ordinal = 0;
             }
             chair = chairs.get(ordinal);
-        } while (!chair.getPassengers().isEmpty());
+        } while (hasPassengers(chair));
 
         Location location = player.getLocation().setDirection(chair.getLocation().getDirection());
+
         if (plugin.getConfiguration().fixChairCamera()) {
             player.teleport(location);
         }
 
         XSound.play(location, plugin.getConfiguration().getSwapSound());
-        chair.addPassenger(player);
+        addPassenger(chair, player);
+    }
+
+    @SuppressWarnings("deprecation")
+    private boolean hasPassengers(Entity entity) {
+        try {
+            return !entity.getPassengers().isEmpty();
+        } catch (NoSuchMethodError error) {
+            return entity.getPassenger() != null;
+        }
+    }
+
+    @SuppressWarnings({"deprecation", "UnusedReturnValue"})
+    private boolean addPassenger(Entity vehicle, Entity passenger) {
+        try {
+            return vehicle.addPassenger(passenger);
+        } catch (NoSuchMethodError error) {
+            return vehicle.setPassenger(passenger);
+        }
     }
 
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean isChairAvailable() {
         for (ArmorStand chair : chairs) {
-            if (!chair.getPassengers().isEmpty()) {
-                continue;
-            }
+            if (hasPassengers(chair)) continue;
             return true;
         }
         return false;
     }
 
     public void start() {
-        if (!state.isWaiting()) {
-            return;
-        }
+        if (!state.isWaiting()) return;
 
         start = new Starting(plugin, this);
         start.runTaskTimer(plugin, 0L, 20L);
@@ -572,16 +563,15 @@ public final class Game {
     }
 
     public void restart() {
-        if (state.isSpinning() || state.isEnding()) {
+        if (npc != null && (state.isSpinning() || state.isEnding())) {
             npc.getOrAddTrait(Equipment.class).set(Equipment.EquipmentSlot.HAND, plugin.getConfiguration().getBall());
         }
 
         Iterator<UUID> iterator = players.iterator();
         while (iterator.hasNext()) {
             Player player = Bukkit.getPlayer(iterator.next());
-            if (player == null) {
-                continue;
-            }
+            if (player == null) continue;
+
             removePlayer(player, true);
             iterator.remove();
         }
@@ -592,8 +582,8 @@ public final class Game {
             spinHologram.clearLines();
         }
 
-        if (plugin.getConfiguration().npcLookAround()) {
-            this.npc.getOrAddTrait(LookCloseModified.class).lookClose(true);
+        if (npc != null && plugin.getConfiguration().npcLookAround()) {
+            npc.getOrAddTrait(LookCloseModified.class).lookClose(true);
         }
 
         // Set the game state to waiting after 1 second, to prevent unwanted messages.
@@ -608,8 +598,15 @@ public final class Game {
 
     public void cancelRunnables(BukkitRunnable... runnables) {
         for (BukkitRunnable runnable : runnables) {
-            if (runnable != null && !runnable.isCancelled()) {
-                runnable.cancel();
+            try {
+                // BukkitRunnable#isCancelled() doesn't exist in every version.
+                if (runnable != null && !runnable.isCancelled()) runnable.cancel();
+            } catch (NoSuchMethodError error) {
+                // If throws the IllegalState exception, is cancelled/not scheduled yet.
+                try {
+                    runnable.cancel();
+                } catch (IllegalStateException ignore) {
+                }
             }
         }
     }
@@ -619,10 +616,7 @@ public final class Game {
 
         for (UUID uuid : players) {
             Player player = Bukkit.getPlayer(uuid);
-
-            if (player == null) {
-                return;
-            }
+            if (player == null) return;
 
             Slot slot = selected.get(uuid).getKey();
 
@@ -634,9 +628,7 @@ public final class Game {
 
             // Compare numbers.
             for (int select : slot.getInts()) {
-                if (select == getWinner().getInts()[0]) {
-                    winners.add(player);
-                }
+                if (select == getWinner().getInts()[0]) winners.add(player);
             }
         }
 
@@ -658,7 +650,7 @@ public final class Game {
 
             EconomyResponse response = plugin.getEconomy().depositPlayer(winner, price);
             if (response.transactionSuccess()) {
-                RUtilities.handleMessage(winner, plugin.getMessages().getPrice(plugin.getEconomy().format(price), slot.getMultiplier()));
+                RUtils.handleMessage(winner, plugin.getMessages().getPrice(plugin.getEconomy().format(price), slot.getMultiplier()));
             }
         }
 
@@ -710,13 +702,9 @@ public final class Game {
     }
 
     public void previousChip(UUID uuid) {
-        if (!isSlotAvailable()) {
-            return;
-        }
+        if (!isSlotAvailable()) return;
 
-        if (!chips.containsKey(uuid)) {
-            return;
-        }
+        if (!chips.containsKey(uuid)) return;
 
         int ordinal = ArrayUtils.indexOf(Slot.getValues(type.isEuropean()), selected.get(uuid).getKey());
 
@@ -736,19 +724,14 @@ public final class Game {
     }
 
     public void nextChip(UUID uuid) {
-        if (!isSlotAvailable()) {
-            return;
-        }
+        if (!isSlotAvailable()) return;
 
-        if (!chips.containsKey(uuid)) {
-            return;
-        }
+        if (!chips.containsKey(uuid)) return;
 
         if (!selected.containsKey(uuid)) {
             for (Slot slot : Slot.getValues(type.isEuropean())) {
-                if (alreadySelected(slot)) {
-                    continue;
-                }
+                if (alreadySelected(slot)) continue;
+
                 selected.put(uuid, new AbstractMap.SimpleEntry<>(slot, slots.get(slot)));
                 handleChipDisplay(uuid, true);
                 break;
@@ -776,9 +759,7 @@ public final class Game {
 
     public boolean alreadySelected(Slot slot) {
         for (UUID uuid : selected.keySet()) {
-            if (selected.get(uuid).getKey() == slot) {
-                return true;
-            }
+            if (selected.get(uuid).getKey() == slot) return true;
         }
         return false;
     }
@@ -795,9 +776,7 @@ public final class Game {
     }
 
     public void handleChipDisplay(UUID uuid, boolean show) {
-        if (!selected.containsKey(uuid)) {
-            return;
-        }
+        if (!selected.containsKey(uuid)) return;
 
         if (show) {
             if (selected.get(uuid).getValue().getEquipment() == null) return;
@@ -808,7 +787,7 @@ public final class Game {
             ArmorStand armorStand = selected.get(uuid).getValue();
             if (armorStand.getEquipment() == null) return;
 
-            armorStand.getEquipment().setItemInMainHand(RUtilities.createHead(chip.getUrl()));
+            armorStand.getEquipment().setItemInMainHand(RUtils.createHead(chip.getUrl()));
             return;
         }
 
@@ -820,27 +799,25 @@ public final class Game {
     }
 
     private void showSelected(UUID uuid) {
-        Vector offset = new Vector(0.22d, 1.15d, 0.41d);
-        Location newLocation = selected.get(uuid).getValue().getLocation().clone().add(RUtilities.offsetVector(offset, location.getYaw(), location.getPitch()));
+        Vector offset = RUtils.offsetVector(new Vector(0.22d, 1.15d, 0.41d), location.getYaw(), location.getPitch());
+        Location where = selected.get(uuid).getValue().getLocation().clone().add(offset);
 
-        Validate.notNull(newLocation.getWorld(), "World can't be null.");
-        XSound.play(newLocation, plugin.getConfiguration().getSelectSound());
+        Validate.notNull(where.getWorld(), "World can't be null.");
+        XSound.play(where, plugin.getConfiguration().getSelectSound());
 
         if (holograms.containsKey(uuid)) {
-            holograms.get(uuid).teleport(newLocation);
+            holograms.get(uuid).teleport(where);
             return;
         }
 
         Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return;
 
-        if (player == null) {
-            return;
-        }
-
-        String placeholder = String.format("{%s-bet}", player.getName());
-        placeholders.add(placeholder);
+        String placeholder = String.format(S_BET, player.getName());
         HologramsAPI.registerPlaceholder(plugin, placeholder, 0.25d, () -> getPlayerBet(uuid));
-        Hologram hologram = HologramsAPI.createHologram(plugin, newLocation);
+        placeholders.add(placeholder);
+
+        Hologram hologram = HologramsAPI.createHologram(plugin, where);
 
         hologram.getVisibilityManager().setVisibleByDefault(false);
         hologram.getVisibilityManager().showTo(player);
@@ -849,22 +826,20 @@ public final class Game {
         for (String line : plugin.getConfiguration().getSelectHologram()) {
             hologram.appendTextLine(line
                     .replaceAll("%player%", player.getName())
-                    .replaceAll("%bet%", String.format("{%s-bet}", player.getName()))
+                    .replaceAll("%bet%", String.format(S_BET, player.getName()))
             );
         }
         holograms.put(uuid, hologram);
     }
 
     public String getPlayerBet(UUID uuid) {
-        if (!selected.containsKey(uuid)) {
-            return null;
-        }
+        if (!selected.containsKey(uuid)) return null;
 
         Slot slot = selected.get(uuid).getKey();
-        return RUtilities.getSlotName(slot);
+        return RUtils.getSlotName(slot);
     }
 
-    public void delete(boolean removeNPC) {
+    public void delete(boolean removeNPC, boolean isIterator) {
         restart();
 
         placeholders.forEach(placeholder -> HologramsAPI.unregisterPlaceholder(plugin, placeholder));
@@ -885,8 +860,12 @@ public final class Game {
         joinHologram.delete();
         spinHologram.delete();
 
-        npc.getOrAddTrait(LookCloseModified.class).lookClose(false);
-        if (removeNPC) npc.destroy();
+        if (npc != null) {
+            npc.getOrAddTrait(LookCloseModified.class).lookClose(false);
+            if (removeNPC) npc.destroy();
+        }
+
+        plugin.getGames().deleteGame(this, isIterator);
     }
 
     public Roulette getPlugin() {
@@ -909,8 +888,16 @@ public final class Game {
         return location;
     }
 
+    public GameData getData() {
+        return data;
+    }
+
     public boolean isDone() {
         return isDone;
+    }
+
+    public Integer getTask() {
+        return task;
     }
 
     public Set<UUID> getPlayers() {
@@ -966,11 +953,16 @@ public final class Game {
     }
 
     public void setMinPlayers(int minPlayers) {
-        this.minPlayers = minPlayers;
+        this.minPlayers = (minPlayers < 1) ? 1 : Math.min(minPlayers, 10);
     }
 
     public void setMaxPlayers(int maxPlayers) {
-        this.maxPlayers = maxPlayers;
+        this.maxPlayers = maxPlayers < minPlayers ? (minPlayers == 10 ? 10 : minPlayers + 1) : Math.min(maxPlayers, 10);
+    }
+
+    public void setLimitPlayers(int minPlayers, int maxPlayers) {
+        setMinPlayers(minPlayers);
+        setMaxPlayers(maxPlayers);
     }
 
     public void setWaiting() {

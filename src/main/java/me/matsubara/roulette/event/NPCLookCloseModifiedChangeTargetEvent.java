@@ -7,6 +7,7 @@ import org.bukkit.event.HandlerList;
 
 @SuppressWarnings("unused")
 public final class NPCLookCloseModifiedChangeTargetEvent extends NPCEvent {
+
     private Player next;
     private final Player old;
     private static final HandlerList handlers = new HandlerList();

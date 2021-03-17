@@ -2,7 +2,11 @@ package me.matsubara.roulette.file;
 
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.game.Game;
+import me.matsubara.roulette.game.GameData;
 import me.matsubara.roulette.game.GameType;
+import me.matsubara.roulette.util.RUtils;
+import net.citizensnpcs.api.CitizensAPI;
+import net.citizensnpcs.api.npc.NPC;
 import org.apache.commons.lang.Validate;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
@@ -11,27 +15,31 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.logging.Logger;
 
 public final class Games {
 
     private final Roulette plugin;
-    private final Set<Game> games;
     private final Logger logger;
+
+    private final List<GameData> gameDatas;
+    private final Set<Game> games;
+
+    private boolean isRunning;
 
     private File file;
     private FileConfiguration configuration;
 
     public Games(Roulette plugin) {
         this.plugin = plugin;
-        this.games = new HashSet<>();
         this.logger = plugin.getLogger();
+        this.gameDatas = new ArrayList<>();
+        this.games = new HashSet<>();
+        this.isRunning = false;
         load();
     }
 
@@ -43,24 +51,22 @@ public final class Games {
         configuration = new YamlConfiguration();
         try {
             configuration.load(file);
-            update(false);
+            update(false, null);
         } catch (IOException | InvalidConfigurationException exception) {
             exception.printStackTrace();
         }
     }
 
     @SuppressWarnings("ConstantConditions")
-    private void update(boolean isReload) {
+    private void update(boolean isReload, @Nullable Player creator) {
+        cancelGamesCreation();
+
         ConfigurationSection section = getConfig().getConfigurationSection("games");
         if (section == null) return;
 
-        int loaded = 0;
-
         Set<String> keys = section.getKeys(false);
 
-        if (keys.size() > 0) {
-            logger.info("Loading " + keys.size() + " game(s) from games.yml...");
-        }
+        int loaded = 0;
 
         // Get values from games.
         for (String path : keys) {
@@ -73,72 +79,115 @@ public final class Games {
             } catch (IllegalArgumentException exception) {
                 type = GameType.AMERICAN;
             }
+
+            // Check that the location from the file isn't null.
             Location location = (Location) getConfig().get("games." + path + ".location");
-            UUID npcUUID = UUID.fromString(getConfig().getString("games." + path + ".npc-uuid"));
-            int minPlayers = getConfig().getInt("games." + path + ".min-players");
-            int maxPlayers = getConfig().getInt("games." + path + ".max-players");
             Validate.notNull(location, "Location can't be null.");
 
-            boolean shouldRecreate = true, shouldSave = false;
+            String uuid = getConfig().getString("games." + path + ".npc-uuid");
+            UUID npcUUID = uuid.equalsIgnoreCase("null") ? null : UUID.fromString(uuid);
 
-            // If is a reload, we'll check if the type of the game / the location  has changed, and if so, we'll recreate the game.
-            // If the min / max players also changed, we'll only change those values and recreate the hologram.
+            int minPlayers = getConfig().getInt("games." + path + ".min-players");
+            int maxPlayers = getConfig().getInt("games." + path + ".max-players");
+
+            boolean shouldRecreate = true;
+
+            // If is a reload, we'll check if some values has changed, if so, we'll check if the game should be recreated (or not).
             if (isReload) {
                 Iterator<Game> iterator = games.iterator();
 
                 while (iterator.hasNext()) {
                     Game current = iterator.next();
-
-                    if (!current.getName().equalsIgnoreCase(path)) {
-                        shouldSave = true;
-                        continue;
-                    }
+                    if (!current.getName().equalsIgnoreCase(path)) continue;
 
                     if (current.getType() != type || !current.getLocation().equals(location) || !current.getNPCUUID().equals(npcUUID)) {
-                        current.delete(false);
-                        iterator.remove();
                         shouldRecreate = true;
+                        current.delete(false, true);
+                        iterator.remove();
                         break;
                     }
 
-                    current.setMinPlayers(minPlayers);
-                    current.setMaxPlayers(maxPlayers);
-                    current.restart();
-                    current.setupJoinHologram(String.format(Game.PLACEHOLDER, path));
                     shouldRecreate = false;
+                    current.restart();
+                    current.setLimitPlayers(minPlayers, maxPlayers);
+                    current.setupJoinHologram(String.format(Game.S_PLAYING, path));
+                    saveGame(current);
                     break;
                 }
             }
 
             if (shouldRecreate) {
-                Game game = new Game(plugin, path, location, null, npcUUID, minPlayers, maxPlayers, type);
-                game.createGame(null, shouldSave);
-                games.add(game);
+                GameData data = new GameData(path, type, location, null, npcUUID, minPlayers, maxPlayers, true, creator);
+                gameDatas.add(data);
             }
-
-            logger.info("Loaded " + loaded + " game(s) of " + keys.size() + " from games.yml...");
         }
 
         if (loaded > 0) {
-            logger.info("All games have been loaded from games.yml, now they're ready to be created. Enable @debug in config.yml to see the progress in console.");
+            logger.info("All games have been loaded from games.yml!");
+            createNextName();
             return;
         }
+
         logger.info("No games have been loaded from games.yml, why don't you create one?");
+    }
+
+    // For reload, if any game hasn't finish, then we cancel and delete it.
+    private void cancelGamesCreation() {
+        isRunning = false;
+
+        Iterator<Game> iterator = games.iterator();
+        while (iterator.hasNext()) {
+            Game current = iterator.next();
+            if (current.isDone()) continue;
+
+            // Cancel the creation task.
+            if (current.getTask() != null) plugin.getServer().getScheduler().cancelTask(current.getTask());
+
+            // Tell the creator of the game that the creation task has been canceled.
+            if (current.getData().getCreator() != null) {
+                Game.CREATING.remove(current.getData().getCreator().getUniqueId());
+                RUtils.handleMessage(current.getData().getCreator(), plugin.getMessages().getCancelled(current.getName()));
+            }
+
+            // If has NPC, remove it.
+            if (current.getNPC() == null) {
+                NPC npc = CitizensAPI.getNPCRegistry().getByUniqueId(current.getData().getNPCUUID());
+                if (npc != null) npc.destroy();
+            }
+
+            current.delete(false, true);
+            iterator.remove();
+        }
+    }
+
+    public void createNextName() {
+        if (gameDatas.isEmpty()) {
+            isRunning = false;
+            return;
+        }
+        GameData data = gameDatas.get(0);
+        new Game(plugin, data);
+
+        gameDatas.remove(0);
+        isRunning = true;
     }
 
     public void saveGame(Game game) {
         games.add(game);
         getConfig().set("games." + game.getName() + ".type", game.getType().toString());
         getConfig().set("games." + game.getName() + ".location", game.getLocation());
-        getConfig().set("games." + game.getName() + ".npc-uuid", game.getNPC().getUniqueId().toString());
+
+        String uuid = (game.getNPC() == null) ? "null" : game.getNPC().getUniqueId().toString();
+        getConfig().set("games." + game.getName() + ".npc-uuid", uuid);
+
         getConfig().set("games." + game.getName() + ".min-players", game.getMinPlayers());
         getConfig().set("games." + game.getName() + ".max-players", game.getMaxPlayers());
         saveConfig();
     }
 
-    public void deleteGame(Game game) {
+    public void deleteGame(Game game, boolean isIterator) {
         getConfig().set("games." + game.getName(), null);
-        games.remove(game);
+        if (!isIterator) games.remove(game);
         saveConfig();
     }
 
@@ -150,11 +199,11 @@ public final class Games {
         }
     }
 
-    public void reloadConfig() {
+    public void reloadConfig(@Nullable Player creator) {
         try {
             configuration = new YamlConfiguration();
             configuration.load(file);
-            update(true);
+            update(true, creator);
         } catch (IOException | InvalidConfigurationException exception) {
             exception.printStackTrace();
         }
@@ -174,8 +223,24 @@ public final class Games {
         return null;
     }
 
-    public Set<Game> getList() {
+    public boolean isUpdate() {
+        // Should be called only on start up.
+        for (Game game : games) {
+            if (!game.isDone() && !game.getData().isUpdate() && game.getData().getCreator() != null) return false;
+        }
+        return true;
+    }
+
+    public List<GameData> getGameDatas() {
+        return gameDatas;
+    }
+
+    public Set<Game> getGamesSet() {
         return games;
+    }
+
+    public boolean isRunning() {
+        return isRunning;
     }
 
     public FileConfiguration getConfig() {

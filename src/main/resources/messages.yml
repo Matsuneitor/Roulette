@@ -1,4 +1,4 @@
-# All messages are customizable, you can use HEX colors using &#RRGGBB.
+# All messages are customizable, you can use HEX colors using &#RRGGBB (1.16+).
 # NOTE: variables don't work in all messages, only those involving them.
 # If you want to send the messages in the action bar, put in the beginning of the message '[AB]'.
 # %game% - the name of the game.
@@ -13,6 +13,8 @@
 # %winners% - a list with the names of the winners, separated by commas.
 # %multiplier% - the prize multiplier, depending on the slot.
 # %money% - the money involved.
+# %croupier% - the croupier name.
+messages.croupier-prefix: "&b%croupier%: "
 messages.invitations:
   - "&eHey, why don't you come and play? You can earn a lot of money!"
   - "&eHey you! Come and play a game."
@@ -57,6 +59,8 @@ messages.confirm-lose: "&cAre you sure? You'll lose your money, shift again to c
 messages.selected-amount: "&a%money% &6will be taken from your account."
 messages.control: "&7Use the WASD keys to choose a bet."
 messages.creating: "&cYou can only create one table at a time."
+messages.wait: "&cYou must wait for all the games to be created."
+messages.cancelled: "&cThe creation of the game &7%game% &chas been canceled."
 messages.help:
   - "&7&m---------------------------------------------------"
   - "&6Roulette &ecommands: &c<required> &f| &9[optional]"

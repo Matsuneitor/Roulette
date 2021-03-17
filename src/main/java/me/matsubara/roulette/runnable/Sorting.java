@@ -5,7 +5,7 @@ import com.gmail.filoghost.holographicdisplays.api.line.TextLine;
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.data.Slot;
 import me.matsubara.roulette.game.Game;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
 import net.citizensnpcs.util.PlayerAnimation;
 import org.apache.commons.lang.Validate;
 import org.bukkit.entity.Player;
@@ -55,10 +55,10 @@ public final class Sorting extends BukkitRunnable {
         // If the spin hologram is empty, create the lines, else update them.
         if (game.getSpinHologram().size() == 0) {
             game.getSpinHologram().appendTextLine(plugin.getConfiguration().getSpinningHologram());
-            game.getSpinHologram().appendTextLine(RUtilities.getSlotName(slots[which]));
+            game.getSpinHologram().appendTextLine(RUtils.getSlotName(slots[which]));
         } else {
             Validate.notNull(game.getLocation().getWorld(), "World can't be null.");
-            ((TextLine) game.getSpinHologram().getLine(1)).setText(RUtilities.getSlotName(slots[which]));
+            ((TextLine) game.getSpinHologram().getLine(1)).setText(RUtils.getSlotName(slots[which]));
             XSound.play(game.getSpinHologram().getLocation(), plugin.getConfiguration().getSpinningSound());
             game.setWinner(slots[which]);
         }

@@ -3,7 +3,6 @@ package me.matsubara.roulette;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.ListenerPriority;
-import com.cryptomorin.xseries.ReflectionUtils;
 import com.gmail.filoghost.holographicdisplays.api.Hologram;
 import com.gmail.filoghost.holographicdisplays.api.HologramsAPI;
 import me.matsubara.roulette.command.Main;
@@ -15,7 +14,8 @@ import me.matsubara.roulette.listener.*;
 import me.matsubara.roulette.listener.protocol.SteerVehicle;
 import me.matsubara.roulette.trait.LookCloseModified;
 import me.matsubara.roulette.util.CyclicPlaceholderReplacer;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
+import me.matsubara.roulette.util.UpdateChecker;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.trait.TraitInfo;
 import net.md_5.bungee.api.ChatColor;
@@ -24,6 +24,8 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.logging.Logger;
 
 public final class Roulette extends JavaPlugin {
 
@@ -65,7 +67,7 @@ public final class Roulette extends JavaPlugin {
         CitizensAPI.getTraitFactory().registerTrait(TraitInfo.create(LookCloseModified.class).withName("lookclosemodified"));
 
         // Animated rainbow color.
-        HologramsAPI.registerPlaceholder(this, "&u", 0.2d, new CyclicPlaceholderReplacer(RUtilities.arrayToStrings(
+        HologramsAPI.registerPlaceholder(this, "&u", 0.2d, new CyclicPlaceholderReplacer(RUtils.arrayToStrings(
                 ChatColor.RED,
                 ChatColor.GOLD,
                 ChatColor.YELLOW,
@@ -74,6 +76,7 @@ public final class Roulette extends JavaPlugin {
                 ChatColor.LIGHT_PURPLE)));
 
         PluginManager manager = getServer().getPluginManager();
+        manager.registerEvents(new EntityDamageByEntity(this), this);
         manager.registerEvents(new EntityDismount(this), this);
         manager.registerEvents(new InventoryClick(this), this);
         manager.registerEvents(new InventoryClose(this), this);
@@ -94,10 +97,29 @@ public final class Roulette extends JavaPlugin {
         }
 
         saveDefaultConfig();
+
+        if (!configuration.updateCheck()) return;
+
+        UpdateChecker.init(this, 82197).requestUpdateCheck().whenComplete((result, throwable) -> {
+            Logger logger = Roulette.this.getLogger();
+            logger.info("Checking for new updates...");
+
+            if (result.requiresUpdate()) {
+                logger.info(String.format("A new version is now available! (%s)", result.getNewestVersion()));
+                return;
+            }
+
+            UpdateChecker.UpdateReason reason = result.getReason();
+            if (reason == UpdateChecker.UpdateReason.UP_TO_DATE) {
+                logger.info(String.format("Roulette is up to date! (%s)", result.getNewestVersion()));
+            } else {
+                logger.warning(String.format("Could not check for new updates! (%s)", reason));
+            }
+        });
     }
 
     private boolean versionAllowed() {
-        return Integer.parseInt(ReflectionUtils.VERSION.split("_")[1]) > 13;
+        return RUtils.getMajorVersion() > 13;
     }
 
     private boolean hasDependencies() {

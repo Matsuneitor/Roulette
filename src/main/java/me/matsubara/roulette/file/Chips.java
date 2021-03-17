@@ -2,7 +2,7 @@ package me.matsubara.roulette.file;
 
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.data.Chip;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -48,6 +48,8 @@ public final class Chips {
         ConfigurationSection section = getConfig().getConfigurationSection("chips");
         if (section == null) return;
 
+        int loaded = 0;
+
         for (String path : section.getKeys(false)) {
             String displayName = hasDisplayName(path) ? getDisplayName(path) : null;
             List<String> lore = hasLore(path) ? getLore(path) : null;
@@ -56,28 +58,40 @@ public final class Chips {
 
             Chip chip = new Chip(path, displayName, lore, url, price);
             chips.add(chip);
+            loaded++;
         }
 
-        chips.sort(Comparator.comparing(Chip::getPrice));
+        if (loaded > 0) {
+            plugin.getLogger().info("All chips have been loaded from chips.yml!");
+            chips.sort(Comparator.comparing(Chip::getPrice));
+            return;
+        }
+
+        plugin.getLogger().info("No chips have been loaded from chips.yml, why don't you create one?");
     }
 
     private boolean hasDisplayName(String path) {
-        return getConfig().contains("chips." + path + ".display-name", false);
+        return contains("chips." + path + ".display-name");
     }
 
     private boolean hasLore(String path) {
-        return getConfig().contains("chips." + path + ".lore", false);
+        return contains("chips." + path + ".lore");
+    }
+
+    private boolean contains(String path) {
+        return getConfig().get(path) != null;
     }
 
     private String getDisplayName(String path) {
-        return RUtilities.translate(getConfig().getString("chips." + path + ".display-name"));
+        return RUtils.translate(getConfig().getString("chips." + path + ".display-name"));
     }
 
     private List<String> getLore(String path) {
-        return RUtilities.translate(getConfig().getStringList("chips." + path + ".lore"));
+        return RUtils.translate(getConfig().getStringList("chips." + path + ".lore"));
     }
 
-    public double getMinAmount() {
+    public Double getMinAmount() {
+        if (chips.isEmpty()) return null;
         return chips.get(0).getPrice();
     }
 

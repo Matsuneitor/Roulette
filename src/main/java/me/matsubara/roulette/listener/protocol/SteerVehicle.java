@@ -7,10 +7,11 @@ import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.StructureModifier;
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.game.Game;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
@@ -38,14 +39,16 @@ public final class SteerVehicle extends PacketAdapter {
         // Check if current vehicle is an armor stand.
         if (!(player.getVehicle() instanceof ArmorStand)) return;
 
-        ArmorStand armorStand = (ArmorStand) player.getVehicle();
-        NamespacedKey key = new NamespacedKey(plugin, "fromRoulette");
+        ArmorStand stand = (ArmorStand) player.getVehicle();
+
+        PersistentDataContainer container = stand.getPersistentDataContainer();
 
         // Check if the vehicle has our identity key.
-        if (!armorStand.getPersistentDataContainer().has(key, PersistentDataType.STRING)) return;
+        NamespacedKey key = new NamespacedKey(plugin, "fromRoulette");
+        if (!container.has(key, PersistentDataType.STRING)) return;
 
         // Check if the game exists.
-        Game game = plugin.getGames().getGameByName(armorStand.getPersistentDataContainer().get(key, PersistentDataType.STRING));
+        Game game = plugin.getGames().getGameByName(container.get(key, PersistentDataType.STRING));
         if (game == null) return;
 
         // Get required values from the packet.
@@ -88,9 +91,9 @@ public final class SteerVehicle extends PacketAdapter {
 
             // Send confirm message.
             if (!game.canLoseMoney()) {
-                RUtilities.handleMessage(player, plugin.getMessages().getConfirm());
+                RUtils.handleMessage(player, plugin.getMessages().getConfirm());
             } else {
-                RUtilities.handleMessage(player, plugin.getMessages().getConfirmLose());
+                RUtils.handleMessage(player, plugin.getMessages().getConfirmLose());
             }
 
             // Add to cooldown and cancel event.

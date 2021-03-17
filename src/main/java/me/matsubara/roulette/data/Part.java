@@ -2,7 +2,6 @@ package me.matsubara.roulette.data;
 
 import com.cryptomorin.xseries.XMaterial;
 import org.apache.commons.lang.ArrayUtils;
-import org.bukkit.Material;
 
 public enum Part {
     // Borders of the table.
@@ -13,32 +12,31 @@ public enum Part {
     BORDER_4_WEST("MATERIAL:SPRUCE_SLAB", -0.890625d, 0.3d, -1.546425d),
     BORDER_5_WEST("MATERIAL:SPRUCE_SLAB", -0.296875d, 0.3d, -1.546425d),
     BORDER_6_WEST("MATERIAL:SPRUCE_SLAB", 0.296875d, 0.3d, -1.546425d),
-    BORDER_7_WEST("MATERIAL:SPRUCE_SLAB", 1.484375d, 0.3d, -1.546425d),
-    BORDER_8_WEST("MATERIAL:SPRUCE_SLAB", 0.890625d, 0.3d, -1.546425d),
-    BORDER_9_WEST("MATERIAL:SPRUCE_SLAB", 1.484375d, 0.3d, -1.546425d),
-    BORDER_10_WEST("MATERIAL:SPRUCE_SLAB", 2.078125d, 0.3d, -1.546425d),
-    BORDER_11_WEST("MATERIAL:SPRUCE_SLAB", 2.671875d, 0.3d, -1.546425d),
-    BORDER_12_WEST("MATERIAL:SPRUCE_SLAB", 3.265625d, 0.3d, -1.546425d),
-    BORDER_13_WEST("MATERIAL:SPRUCE_SLAB", 3.859375d, 0.3d, -1.546425d),
+    BORDER_7_WEST("MATERIAL:SPRUCE_SLAB", 0.890625d, 0.3d, -1.546425d),
+    BORDER_8_WEST("MATERIAL:SPRUCE_SLAB", 1.484375d, 0.3d, -1.546425d),
+    BORDER_9_WEST("MATERIAL:SPRUCE_SLAB", 2.078125d, 0.3d, -1.546425d),
+    BORDER_10_WEST("MATERIAL:SPRUCE_SLAB", 2.671875d, 0.3d, -1.546425d),
+    BORDER_11_WEST("MATERIAL:SPRUCE_SLAB", 3.265625d, 0.3d, -1.546425d),
+    BORDER_12_WEST("MATERIAL:SPRUCE_SLAB", 3.859375d, 0.3d, -1.546425d),
 
-    BORDER_14_NORTH("MATERIAL:SPRUCE_SLAB", 3.921425d, 0.3d, -1.1875d),
-    BORDER_15_NORTH("MATERIAL:SPRUCE_SLAB", 3.921425d, 0.3d, -0.59375d),
-    BORDER_16_NORTH("MATERIAL:SPRUCE_SLAB", 3.921425d, 0.3d, 0.0d),
+    BORDER_13_NORTH("MATERIAL:SPRUCE_SLAB", 3.921425d, 0.3d, -1.1875d),
+    BORDER_14_NORTH("MATERIAL:SPRUCE_SLAB", 3.921425d, 0.3d, -0.59375d),
+    BORDER_15_NORTH("MATERIAL:SPRUCE_SLAB", 3.921425d, 0.3d, 0.0d),
 
-    BORDER_17_EAST("MATERIAL:SPRUCE_SLAB", 3.859375d, 0.3d, 0.358925d),
-    BORDER_18_EAST("MATERIAL:SPRUCE_SLAB", 3.265625d, 0.3d, 0.358925d),
-    BORDER_19_EAST("MATERIAL:SPRUCE_SLAB", 2.671875d, 0.3d, 0.358925d),
-    BORDER_20_EAST("MATERIAL:SPRUCE_SLAB", 2.078125d, 0.3d, 0.358925d),
-    BORDER_21_EAST("MATERIAL:SPRUCE_SLAB", 1.484375d, 0.3d, 0.358925d),
-    BORDER_22_EAST("MATERIAL:SPRUCE_SLAB", 0.890625d, 0.3d, 0.358925d),
-    BORDER_23_EAST("MATERIAL:SPRUCE_SLAB", 1.484375d, 0.3d, 0.358925d),
-    BORDER_24_EAST("MATERIAL:SPRUCE_SLAB", 0.296875d, 0.3d, 0.358925d),
-    BORDER_25_EAST("MATERIAL:SPRUCE_SLAB", -0.296875d, 0.3d, 0.358925d),
+    BORDER_16_EAST("MATERIAL:SPRUCE_SLAB", 3.859375d, 0.3d, 0.358925d),
+    BORDER_17_EAST("MATERIAL:SPRUCE_SLAB", 3.265625d, 0.3d, 0.358925d),
+    BORDER_18_EAST("MATERIAL:SPRUCE_SLAB", 2.671875d, 0.3d, 0.358925d),
+    BORDER_29_EAST("MATERIAL:SPRUCE_SLAB", 2.078125d, 0.3d, 0.358925d),
+    BORDER_20_EAST("MATERIAL:SPRUCE_SLAB", 1.484375d, 0.3d, 0.358925d),
+    BORDER_21_EAST("MATERIAL:SPRUCE_SLAB", 0.890625d, 0.3d, 0.358925d),
+    BORDER_22_EAST("MATERIAL:SPRUCE_SLAB", 1.484375d, 0.3d, 0.358925d),
+    BORDER_23_EAST("MATERIAL:SPRUCE_SLAB", 0.296875d, 0.3d, 0.358925d),
+    BORDER_24_EAST("MATERIAL:SPRUCE_SLAB", -0.296875d, 0.3d, 0.358925d),
 
-    BORDER_26("MATERIAL:SPRUCE_SLAB", -0.358925d, 0.3d, 0.0155d),
+    BORDER_25("MATERIAL:SPRUCE_SLAB", -0.358925d, 0.3d, 0.0155d),
 
-    BORDER_27_EAST("MATERIAL:SPRUCE_SLAB", -0.890625d, 0.3d, -0.234825d),
-    BORDER_28_EAST("MATERIAL:SPRUCE_SLAB", -1.484375d, 0.3d, -0.234825d),
+    BORDER_26_EAST("MATERIAL:SPRUCE_SLAB", -0.890625d, 0.3d, -0.234825d),
+    BORDER_27_EAST("MATERIAL:SPRUCE_SLAB", -1.484375d, 0.3d, -0.234825d),
 
     // Foots of the table.
     FOOT_1("MATERIAL:SPRUCE_PLANKS", 0.0d, 0.325d, 0.0d),
@@ -54,7 +52,6 @@ public enum Part {
     TABLE_1_5("fd9688933422478b6bb936fbe05f132b1dfcbf0de743b3166a39abc77836f35f", 2.375d, 0.0d, 0.0d),
     TABLE_1_6("d9efd5586c2413847b5930e12c103eaf788b9bc9f13389b0b6164c1cf94315b1", 2.96875d, 0.0d, 0.0d),
     TABLE_1_7("6bd69fefd30930200eb2eb49738acb44c182f26f76ca1feea022655e75f8c4d5", 3.5625d, 0.0d, 0.0d),
-    TABLE_2_1("99dcf9e97714e9294c92f2e0e4e38b0541523d8fcce35d93c0c3fd9513c97120", 0.0d, 0.0d, -0.59375d),
 
     // Wheels of the table.
     WHEEL_1_1("7af91b2da78a013b79e112b8fbaa78bde299997cc2a0605c1eb54be793b4ca6f", -1.1875d, 0.0d, -0.59375d),
@@ -63,13 +60,13 @@ public enum Part {
     // For american roulette.
     TABLE_2_1_AMERICAN("b088ab716d8d6607cba802984fc274eb3d9f67392e8c305a27810581bdab1181", 0.0d, 0.0d, -0.59375d),
 
+    TABLE_2_1("99dcf9e97714e9294c92f2e0e4e38b0541523d8fcce35d93c0c3fd9513c97120", 0.0d, 0.0d, -0.59375d),
     TABLE_2_2("ad2d442a3d08f9aa9d07513bbc07e72b27dd598f991246412b07a8eaba7e5617", 0.59375d, 0.0d, -0.59375d),
     TABLE_2_3("158e22754a694251c82c5077dc6f0ddebc5f4905d45b8afa1886a12ccad4370b", 1.1875d, 0.0d, -0.59375d),
     TABLE_2_4("25debf11e12c1ec74bf4deb17ff55eba0eb4d7c23055de74ca5205798204ce0f", 1.78125d, 0.0d, -0.59375d),
     TABLE_2_5("ad2d442a3d08f9aa9d07513bbc07e72b27dd598f991246412b07a8eaba7e5617", 2.375d, 0.0d, -0.59375d),
     TABLE_2_6("158e22754a694251c82c5077dc6f0ddebc5f4905d45b8afa1886a12ccad4370b", 2.96875d, 0.0d, -0.59375d),
     TABLE_2_7("f0b05700dd0eefdbd595fd75400ba969605d62249fa3df333a653e814a3d7776", 3.5625d, 0.0d, -0.59375d),
-    TABLE_3_1("dcd9bf37a36019a92e6bdca577bcc6601aed6317f1c5b09799f1f7fa00edcb7d", 0.0d, 0.0d, -1.1875d),
 
     // Wheels of the table.
     WHEEL_2_1("35efc936873314d13ffd7ee5b305233e43fe3c404a6ee3c3b81f0e47d3a53367", -1.1875d, 0.0d, -1.1875d),
@@ -78,6 +75,7 @@ public enum Part {
     // For american roulette.
     TABLE_3_1_AMERICAN("db90ad752b741d3fd96711db3840093a2422cd28373b0592cc23fda71aa369a5", 0.0d, 0.0d, -1.1875d),
 
+    TABLE_3_1("dcd9bf37a36019a92e6bdca577bcc6601aed6317f1c5b09799f1f7fa00edcb7d", 0.0d, 0.0d, -1.1875d),
     TABLE_3_2("753197a604c3452b0210c601fb902ad045b0e98585ec1e563b63d77ac5b717c1", 0.59375d, 0.0d, -1.1875d),
     TABLE_3_3("c42ddacdfd9f389668bce1ca7f9840f80b9f23dcabee804e6839467879fd0704", 1.1875d, 0.0d, -1.1875d),
     TABLE_3_4("f52de0bbe26b67d13017f18b0d67259f48e3f14f7ec37389663e01f17846de83", 1.78125d, 0.0d, -1.1875d),
@@ -86,36 +84,45 @@ public enum Part {
     TABLE_3_7("4fc94663fc58921da8bcb196507701a711e2161f1fb2739a09a69aae2830958c", 3.5625d, 0.0d, -1.1875d),
 
     // Chairs.
-    CHAIR_1_1("MATERIAL:SPRUCE_SLAB", 0.0d, 0.0d, 1.21d),
-    CHAIR_1_2("MATERIAL:RED_CARPET", 0.0d, 0.3d, 1.21d),
-    CHAIR_1_3("MATERIAL:SPRUCE_PLANKS", 0.0d, 0.32d, 1.21d),
-    CHAIR_2_1("MATERIAL:SPRUCE_SLAB", 1.17d, 0.0d, 1.21d),
-    CHAIR_2_2("MATERIAL:RED_CARPET", 1.17d, 0.3d, 1.21d),
-    CHAIR_2_3("MATERIAL:SPRUCE_PLANKS", 1.17d, 0.32d, 1.21d),
-    CHAIR_3_1("MATERIAL:SPRUCE_SLAB", 2.34d, 0.0d, 1.21d),
-    CHAIR_3_2("MATERIAL:RED_CARPET", 2.34d, 0.3d, 1.21d),
-    CHAIR_3_3("MATERIAL:SPRUCE_PLANKS", 2.34d, 0.32d, 1.21d),
-    CHAIR_4_1("MATERIAL:SPRUCE_SLAB", 3.55d, 0.0d, 1.21d),
-    CHAIR_4_2("MATERIAL:RED_CARPET", 3.55d, 0.3d, 1.21d),
-    CHAIR_4_3("MATERIAL:SPRUCE_PLANKS", 3.55d, 0.32d, 1.21d),
-    CHAIR_5_1("MATERIAL:SPRUCE_SLAB", 4.76d, 0.0d, 0.0d),
-    CHAIR_5_2("MATERIAL:RED_CARPET", 4.76d, 0.3d, 0.0d),
-    CHAIR_5_3("MATERIAL:SPRUCE_PLANKS", 4.76d, 0.32d, 0.0d),
-    CHAIR_6_1("MATERIAL:SPRUCE_SLAB", 4.76d, 0.0d, -1.17d),
-    CHAIR_6_2("MATERIAL:RED_CARPET", 4.76d, 0.3d, -1.17d),
-    CHAIR_6_3("MATERIAL:SPRUCE_PLANKS", 4.76d, 0.32d, -1.17d),
-    CHAIR_7_1("MATERIAL:SPRUCE_SLAB", 3.55d, 0.0d, -2.38d),
-    CHAIR_7_2("MATERIAL:RED_CARPET", 3.55d, 0.3d, -2.38d),
-    CHAIR_7_3("MATERIAL:SPRUCE_PLANKS", 3.55d, 0.32d, -2.38d),
-    CHAIR_8_1("MATERIAL:SPRUCE_SLAB", 2.34d, 0.0d, -2.38d),
-    CHAIR_8_2("MATERIAL:RED_CARPET", 2.34d, 0.3d, -2.38d),
-    CHAIR_8_3("MATERIAL:SPRUCE_PLANKS", 2.34d, 0.32d, -2.38d),
-    CHAIR_9_1("MATERIAL:SPRUCE_SLAB", 1.17d, 0.0d, -2.38d),
-    CHAIR_9_2("MATERIAL:RED_CARPET", 1.17d, 0.3d, -2.38d),
-    CHAIR_9_3("MATERIAL:SPRUCE_PLANKS", 1.17d, 0.32d, -2.38d),
-    CHAIR_10_1("MATERIAL:SPRUCE_SLAB", 0.0d, 0.0d, -2.38d),
-    CHAIR_10_2("MATERIAL:RED_CARPET", 0.0d, 0.3d, -2.38d),
-    CHAIR_10_3("MATERIAL:SPRUCE_PLANKS", 0.0d, 0.32d, -2.38d),
+    CHAIR_1_1("MATERIAL:SPRUCE_PLANKS", 0.0d, 0.32d, 1.21d),
+    CHAIR_1_2("MATERIAL:SPRUCE_SLAB", 0.0d, 0.0d, 1.21d),
+    CHAIR_1_3("MATERIAL:RED_CARPET", 0.0d, 0.3d, 1.21d),
+
+    CHAIR_2_1("MATERIAL:SPRUCE_PLANKS", 1.17d, 0.32d, 1.21d),
+    CHAIR_2_2("MATERIAL:SPRUCE_SLAB", 1.17d, 0.0d, 1.21d),
+    CHAIR_2_3("MATERIAL:RED_CARPET", 1.17d, 0.3d, 1.21d),
+
+    CHAIR_3_1("MATERIAL:SPRUCE_PLANKS", 2.34d, 0.32d, 1.21d),
+    CHAIR_3_2("MATERIAL:SPRUCE_SLAB", 2.34d, 0.0d, 1.21d),
+    CHAIR_3_3("MATERIAL:RED_CARPET", 2.34d, 0.3d, 1.21d),
+
+    CHAIR_4_1("MATERIAL:SPRUCE_PLANKS", 3.55d, 0.32d, 1.21d),
+    CHAIR_4_2("MATERIAL:SPRUCE_SLAB", 3.55d, 0.0d, 1.21d),
+    CHAIR_4_3("MATERIAL:RED_CARPET", 3.55d, 0.3d, 1.21d),
+
+    CHAIR_5_1("MATERIAL:SPRUCE_PLANKS", 4.76d, 0.32d, 0.0d),
+    CHAIR_5_2("MATERIAL:SPRUCE_SLAB", 4.76d, 0.0d, 0.0d),
+    CHAIR_5_3("MATERIAL:RED_CARPET", 4.76d, 0.3d, 0.0d),
+
+    CHAIR_6_1("MATERIAL:SPRUCE_PLANKS", 4.76d, 0.32d, -1.17d),
+    CHAIR_6_2("MATERIAL:SPRUCE_SLAB", 4.76d, 0.0d, -1.17d),
+    CHAIR_6_3("MATERIAL:RED_CARPET", 4.76d, 0.3d, -1.17d),
+
+    CHAIR_7_1("MATERIAL:SPRUCE_PLANKS", 3.55d, 0.32d, -2.38d),
+    CHAIR_7_2("MATERIAL:SPRUCE_SLAB", 3.55d, 0.0d, -2.38d),
+    CHAIR_7_3("MATERIAL:RED_CARPET", 3.55d, 0.3d, -2.38d),
+
+    CHAIR_8_1("MATERIAL:SPRUCE_PLANKS", 2.34d, 0.32d, -2.38d),
+    CHAIR_8_2("MATERIAL:SPRUCE_SLAB", 2.34d, 0.0d, -2.38d),
+    CHAIR_8_3("MATERIAL:RED_CARPET", 2.34d, 0.3d, -2.38d),
+
+    CHAIR_9_1("MATERIAL:SPRUCE_PLANKS", 1.17d, 0.32d, -2.38d),
+    CHAIR_9_2("MATERIAL:SPRUCE_SLAB", 1.17d, 0.0d, -2.38d),
+    CHAIR_9_3("MATERIAL:RED_CARPET", 1.17d, 0.3d, -2.38d),
+
+    CHAIR_10_1("MATERIAL:SPRUCE_PLANKS", 0.0d, 0.32d, -2.38d),
+    CHAIR_10_2("MATERIAL:SPRUCE_SLAB", 0.0d, 0.0d, -2.38d),
+    CHAIR_10_3("MATERIAL:RED_CARPET", 0.0d, 0.3d, -2.38d),
 
     // Decorations.
     DECORATION("b0458d58c030cfabd8b19e4944bbe2860f6617a77ec6c9488593e2a473db6758", -1.8265d, 1.6d, -0.7465d),
@@ -236,17 +243,8 @@ public enum Part {
         return url.startsWith("MATERIAL");
     }
 
-    public Material getMaterial() {
-        if (!isMaterial()) return null;
-        return XMaterial.matchXMaterial(getUrl()).map(XMaterial::parseMaterial).orElse(null);
-    }
-
     public boolean isSpinner() {
         return name().startsWith("SPINNER");
-    }
-
-    public boolean isFirstSpinner() {
-        return Character.getNumericValue(name().charAt(name().length() - 1)) == 1;
     }
 
     public boolean isSlot() {
@@ -261,12 +259,21 @@ public enum Part {
         return name().startsWith("DECORATION");
     }
 
+    public boolean isFirstSpinner() {
+        return Character.getNumericValue(name().charAt(name().length() - 1)) == 1;
+    }
+
     public boolean isNPCTarget() {
         return this == NPC_TARGET;
     }
 
     public String getUrl() {
         return isMaterial() ? url.substring(9) : url;
+    }
+
+    public XMaterial getXMaterial() {
+        if (!isMaterial()) return null;
+        return XMaterial.matchXMaterial(getUrl()).orElse(null);
     }
 
     public static int getSize(boolean isEuropean) {

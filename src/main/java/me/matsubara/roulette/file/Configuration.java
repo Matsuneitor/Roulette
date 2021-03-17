@@ -2,7 +2,7 @@ package me.matsubara.roulette.file;
 
 import com.cryptomorin.xseries.XMaterial;
 import me.matsubara.roulette.Roulette;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -21,6 +21,10 @@ public final class Configuration {
 
     public boolean enableDebug() {
         return plugin.getConfig().getBoolean("debug");
+    }
+
+    public boolean updateCheck() {
+        return plugin.getConfig().getBoolean("update-checker");
     }
 
     public int getLookDistance() {
@@ -64,7 +68,8 @@ public final class Configuration {
     }
 
     public ItemStack getBall() {
-        return XMaterial.matchXMaterial(plugin.getConfig().getString("croupier-ball")).map(XMaterial::parseItem).orElse(null);
+        String ball = plugin.getConfig().getString("croupier-ball");
+        return XMaterial.matchXMaterial(ball).map(XMaterial::parseItem).orElse(null);
     }
 
     public int getCountdownWaiting() {
@@ -111,82 +116,80 @@ public final class Configuration {
         return plugin.getConfig().getString("sound.select");
     }
 
-    public String getProgress(int percent, String progress, String game) {
-        return RUtilities.translate(plugin.getConfig().getString("progress")
+    public String getProgress(int percent, String progress, String game, int left) {
+        return RUtils.translate(plugin.getConfig().getString("progress")
                 .replace("%percent%", String.valueOf(percent))
                 .replace("%progress-bar%", progress)
-                .replace("%game%", game));
+                .replace("%game%", game)
+                .replace("%left%", String.valueOf(left)));
     }
 
-    public char getProgressChar() {
+    public char getProgressCharacter() {
         return plugin.getConfig().getString("progress-character").charAt(0);
     }
 
     public String getSpinningHologram() {
-        return RUtilities.translate(plugin.getConfig().getString("spin-holograms.spinning"));
+        return RUtils.translate(plugin.getConfig().getString("spin-holograms.spinning"));
     }
 
     public String getWinningHologram() {
-        return RUtilities.translate(plugin.getConfig().getString("spin-holograms.winning-number"));
+        return RUtils.translate(plugin.getConfig().getString("spin-holograms.winning-number"));
     }
 
     public String getZero(String zero) {
-        return RUtilities.translate(plugin.getConfig().getString("slots.single.zero")
-                .replace("%number%", zero));
+        return RUtils.translate(plugin.getConfig().getString("slots.single.zero").replace("%number%", zero));
     }
 
     public String getSingleRed(String number) {
-        return RUtilities.translate(plugin.getConfig().getString("slots.single.red")
-                .replace("%number%", number));
+        return RUtils.translate(plugin.getConfig().getString("slots.single.red").replace("%number%", number));
     }
 
     public String getSingleBlack(String number) {
-        return RUtilities.translate(plugin.getConfig().getString("slots.single.black")
-                .replace("%number%", number));
+        return RUtils.translate(plugin.getConfig().getString("slots.single.black").replace("%number%", number));
     }
 
     public String getColumnOrDozen(String type, int index) {
-        return RUtilities.translate(plugin.getConfig().getString("slots." + type + "." + index));
+        return RUtils.translate(plugin.getConfig().getString("slots." + type + "." + index));
     }
 
     public String getLow() {
-        return RUtilities.translate(plugin.getConfig().getString("slots.other.low"));
+        return RUtils.translate(plugin.getConfig().getString("slots.other.low"));
     }
 
     public String getHigh() {
-        return RUtilities.translate(plugin.getConfig().getString("slots.other.high"));
+        return RUtils.translate(plugin.getConfig().getString("slots.other.high"));
     }
 
     public String getEven() {
-        return RUtilities.translate(plugin.getConfig().getString("slots.other.even"));
+        return RUtils.translate(plugin.getConfig().getString("slots.other.even"));
     }
 
     public String getOdd() {
-        return RUtilities.translate(plugin.getConfig().getString("slots.other.odd"));
+        return RUtils.translate(plugin.getConfig().getString("slots.other.odd"));
     }
 
     public String getNameRed() {
-        return RUtilities.translate(plugin.getConfig().getString("slots.other.red"));
+        return RUtils.translate(plugin.getConfig().getString("slots.other.red"));
     }
 
     public String getNameBlack() {
-        return RUtilities.translate(plugin.getConfig().getString("slots.other.black"));
+        return RUtils.translate(plugin.getConfig().getString("slots.other.black"));
     }
 
     public String getEuropeanType() {
-        return RUtilities.translate(plugin.getConfig().getString("type.european"));
+        return RUtils.translate(plugin.getConfig().getString("type.european"));
     }
 
     public String getAmericanType() {
-        return RUtilities.translate(plugin.getConfig().getString("type.american"));
+        return RUtils.translate(plugin.getConfig().getString("type.american"));
     }
 
     public List<String> getJoinHologram() {
-        return RUtilities.translate(plugin.getConfig().getStringList("join-hologram"));
+        return RUtils.translate(plugin.getConfig().getStringList("join-hologram"));
     }
 
     public List<String> getSelectHologram() {
-        return RUtilities.translate(plugin.getConfig().getStringList("select-hologram"));
+        return RUtils.translate(plugin.getConfig().getStringList("select-hologram"));
     }
 
     public String getNotEnoughMaterial() {
@@ -194,22 +197,21 @@ public final class Configuration {
     }
 
     public String getNotEnoughDisplayName() {
-        return RUtilities.translate(plugin.getConfig().getString("not-enough-money.display-name"));
+        return RUtils.translate(plugin.getConfig().getString("not-enough-money.display-name"));
     }
 
     public List<String> getNotEnoughLore() {
-        return RUtilities.translate(plugin.getConfig().getStringList("not-enough-money.display-name"));
+        return RUtils.translate(plugin.getConfig().getStringList("not-enough-money.display-name"));
     }
 
     public String getShopTitle(int page, int max) {
-        return RUtilities.translate(plugin.getConfig().getString("shop.title")
+        return RUtils.translate(plugin.getConfig().getString("shop.title")
                 .replace("%page%", String.valueOf(page))
                 .replace("%max%", String.valueOf(max)));
     }
 
     public String getChipDisplayName(double price) {
-        return getDisplayName("chip")
-                .replace("%money%", plugin.getEconomy().format(price));
+        return getDisplayName("chip").replace("%money%", plugin.getEconomy().format(price));
     }
 
     public List<String> getChipLore() {
@@ -218,16 +220,16 @@ public final class Configuration {
 
     public ItemStack getItem(String type, @Nullable String money) {
         Optional<XMaterial> material = XMaterial.matchXMaterial(getMaterial(type));
-        if (!material.isPresent()) {
-            return null;
-        }
-        ItemStack item = isSkull(type, material.get()) ? RUtilities.createHead(getUrl(type)) : material.get().parseItem();
+        if (!material.isPresent()) return null;
+
+        ItemStack item = isSkull(type, material.get()) ? RUtils.createHead(getUrl(type)) : material.get().parseItem();
+
         ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName((money != null) ? getDisplayName(type).replace("%money%", money) : getDisplayName(type));
-            meta.setLore(getLore(type));
-            item.setItemMeta(meta);
-        }
+        if (meta == null) return null;
+
+        meta.setDisplayName((money != null) ? getDisplayName(type).replace("%money%", money) : getDisplayName(type));
+        meta.setLore(getLore(type));
+        item.setItemMeta(meta);
         return item;
     }
 
@@ -236,7 +238,7 @@ public final class Configuration {
     }
 
     private boolean containsURL(String type) {
-        return plugin.getConfig().contains("shop." + type + ".url", false);
+        return plugin.getConfig().get("shop." + type + ".url") != null;
     }
 
     private String getUrl(String path) {
@@ -248,10 +250,10 @@ public final class Configuration {
     }
 
     public String getDisplayName(String path) {
-        return RUtilities.translate(plugin.getConfig().getString("shop." + path + ".display-name"));
+        return RUtils.translate(plugin.getConfig().getString("shop." + path + ".display-name"));
     }
 
     public List<String> getLore(String path) {
-        return RUtilities.translate(plugin.getConfig().getStringList("shop." + path + ".lore"));
+        return RUtils.translate(plugin.getConfig().getStringList("shop." + path + ".lore"));
     }
 }

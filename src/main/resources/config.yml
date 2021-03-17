@@ -6,12 +6,15 @@
 # |_|  \_\___/ \__,_|_|\___|\__|\__\___|
 #
 # Developed by Matsuneitor.
-# v1.0-SNAPSHOT.
+# v5.0-SNAPSHOT.
 # :)
 
 # Whether or not to receive more messages in the console from this plugin (like progress of loaded games, etc.).
-# This also will show a progress bar to the player when doing /reload to check the progress.
+# This also will show a progress bar to the player when doing creating a new game to check the progress.
 debug: true
+
+# Whether or not to enable the update checker.
+update-checker: true
 
 # The maximum distance that a NPC can look.
 look-distance: 15
@@ -86,10 +89,11 @@ sound.select: BLOCK_WOOL_PLACE
 # %percent% - the current percent.
 # %progress-bar% - the progress bar.
 # %game% - the name of the game.
-progress: "&bCreating the game &e%game% &f| &6%percent%% &8&l[%progress-bar%&8&l]"
+# %left% - the amount of games left to be created.
+progress: "&e%left% left &f| &bCreating the game &e%game% &f| &6%percent%% &8[%progress-bar%&8]"
 
 # The caracter used in the progress bar, only one character allowed.
-progress-character: "▌"
+progress-character: "|"
 
 # Name to display in the hologram of each slot.
 # %number% - the number if the slot is single.

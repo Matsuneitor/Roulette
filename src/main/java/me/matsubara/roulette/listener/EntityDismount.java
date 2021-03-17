@@ -2,13 +2,14 @@ package me.matsubara.roulette.listener;
 
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.game.Game;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.spigotmc.event.entity.EntityDismountEvent;
 
@@ -30,14 +31,16 @@ public final class EntityDismount implements Listener {
         // Check if the vehicle is an armor stand.
         if (!(event.getDismounted() instanceof ArmorStand)) return;
 
-        ArmorStand armorStand = (ArmorStand) event.getDismounted();
-        NamespacedKey key = new NamespacedKey(plugin, "fromRoulette");
+        ArmorStand stand = (ArmorStand) event.getDismounted();
+
+        PersistentDataContainer container = stand.getPersistentDataContainer();
 
         // Check if the vehicle has our identity key.
-        if (!armorStand.getPersistentDataContainer().has(key, PersistentDataType.STRING)) return;
+        NamespacedKey key = new NamespacedKey(plugin, "fromRoulette");
+        if (!container.has(key, PersistentDataType.STRING)) return;
 
         // Check if the game exists.
-        Game game = plugin.getGames().getGameByName(armorStand.getPersistentDataContainer().get(key, PersistentDataType.STRING));
+        Game game = plugin.getGames().getGameByName(container.get(key, PersistentDataType.STRING));
         if (game == null) return;
 
         // Check a tick later to make sure the player didn't swap chair / leave the game.
@@ -49,7 +52,7 @@ public final class EntityDismount implements Listener {
 
             // The player leave the game (dismount / change gamemode to spectator), remove him.
             if (!game.getState().isEnding()) {
-                RUtilities.handleMessage(player, plugin.getMessages().getLeavePlayer());
+                RUtils.handleMessage(player, plugin.getMessages().getLeavePlayer());
             }
             game.removePlayer(player, false);
         });

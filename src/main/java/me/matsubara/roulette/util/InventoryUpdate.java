@@ -125,31 +125,23 @@ public final class InventoryUpdate {
 
             // Get InventoryView from activeContainer.
             Object bukkitView = getBukkitView.invoke(activeContainer);
-
-            if (!(bukkitView instanceof InventoryView)) {
-                return;
-            }
+            if (!(bukkitView instanceof InventoryView)) return;
 
             InventoryView view = (InventoryView) bukkitView;
             InventoryType type = view.getTopInventory().getType();
 
             // Workbenchs and anvils can change their title since 1.14.
-            if ((type == InventoryType.WORKBENCH || type == InventoryType.ANVIL) && !useContainers()) {
-                return;
-            }
+            if ((type == InventoryType.WORKBENCH || type == InventoryType.ANVIL) && !useContainers()) return;
 
             // You can't reopen crafting, creative and player inventory.
-            if (type == InventoryType.CRAFTING || type == InventoryType.CREATIVE || type == InventoryType.PLAYER) {
+            if (type == InventoryType.CRAFTING || type == InventoryType.CREATIVE || type == InventoryType.PLAYER)
                 return;
-            }
 
             int size = view.getTopInventory().getSize();
 
             // Get container, check is not null.
             Containers container = Containers.getType(type, size);
-            if (container == null) {
-                return;
-            }
+            if (container == null) return;
 
             // If the container was added in a newer versions than the current, return.
             if (container.getContainerVersion() > getVersion() && useContainers()) {
@@ -252,14 +244,11 @@ public final class InventoryUpdate {
          * @return the container.
          */
         public static Containers getType(InventoryType type, int size) {
-            if (type == InventoryType.CHEST) {
-                return Containers.valueOf("GENERIC_9X" + size / 9);
-            }
+            if (type == InventoryType.CHEST) return Containers.valueOf("GENERIC_9X" + size / 9);
+
             for (Containers container : Containers.values()) {
                 for (String bukkitName : container.getInventoryTypesNames()) {
-                    if (bukkitName.equalsIgnoreCase(type.toString())) {
-                        return container;
-                    }
+                    if (bukkitName.equalsIgnoreCase(type.toString())) return container;
                 }
             }
             return null;
@@ -272,9 +261,7 @@ public final class InventoryUpdate {
          */
         public Object getObject() {
             try {
-                if (!useContainers()) {
-                    return getMinecraftName();
-                }
+                if (!useContainers()) return getMinecraftName();
                 String name = (getVersion() == 14 && this == CARTOGRAPHY_TABLE) ? "CARTOGRAPHY" : name();
                 Field field = CONTAINERS_CLASS.getField(name);
                 return field.get(null);

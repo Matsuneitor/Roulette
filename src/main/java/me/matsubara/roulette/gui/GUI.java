@@ -1,16 +1,17 @@
 package me.matsubara.roulette.gui;
 
 import com.cryptomorin.xseries.XMaterial;
+import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.data.Chip;
 import me.matsubara.roulette.util.InventoryUpdate;
-import me.matsubara.roulette.Roulette;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.*;
@@ -74,16 +75,12 @@ public final class GUI {
 
         // Background items.
         for (int i = 0; i < 35; i++) {
-            if (slots.contains(i) || Arrays.asList(19, 20, 21, 22, 23, 24, 25).contains(i)) {
-                continue;
-            }
+            if (slots.contains(i) || Arrays.asList(19, 20, 21, 22, 23, 24, 25).contains(i)) continue;
             inventory.setItem(i, background);
         }
 
         // Previous page button.
-        if (current > 0) {
-            inventory.setItem(19, previous);
-        }
+        if (current > 0) inventory.setItem(19, previous);
 
         // Money display.
         inventory.setItem(22, money);
@@ -92,9 +89,7 @@ public final class GUI {
         inventory.setItem(35, exit);
 
         // Next page button.
-        if (current < (pages - 1)) {
-            inventory.setItem(25, next);
-        }
+        if (current < (pages - 1)) inventory.setItem(25, next);
 
         // Assigning slots.
         Map<Integer, Integer> slotIndex = new HashMap<>();
@@ -105,14 +100,11 @@ public final class GUI {
         // Where to start
         int startFrom = current * slots.size();
 
-        // Required namespaces.
-        NamespacedKey keyMoney = new NamespacedKey(plugin, "fromRouletteMoney"), keyChip = new NamespacedKey(plugin, "fromRouletteChip");
-
         // Populate inventory.
         for (int index = 0, aux = startFrom; isLast() ? index < plugin.getChips().getList().size() - startFrom : index < slots.size(); index++, aux++) {
             Chip chip = plugin.getChips().getList().get(aux);
 
-            ItemStack item = RUtilities.createHead(chip.getUrl());
+            ItemStack item = RUtils.createHead(chip.getUrl());
             if (item == null) continue;
 
             ItemMeta meta = item.getItemMeta();
@@ -125,8 +117,15 @@ public final class GUI {
 
             meta.setDisplayName(displayName);
             meta.setLore(lore);
-            meta.getPersistentDataContainer().set(keyMoney, PersistentDataType.DOUBLE, price);
-            meta.getPersistentDataContainer().set(keyChip, PersistentDataType.STRING, chip.getName());
+
+            PersistentDataContainer container = meta.getPersistentDataContainer();
+
+            NamespacedKey key = new NamespacedKey(plugin, "fromRouletteMoney");
+            container.set(key, PersistentDataType.DOUBLE, price);
+
+            key = new NamespacedKey(plugin, "fromRouletteChip");
+            container.set(key, PersistentDataType.STRING, chip.getName());
+
             item.setItemMeta(meta);
 
             inventory.setItem(slotIndex.get(index), item);

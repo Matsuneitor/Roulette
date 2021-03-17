@@ -3,7 +3,7 @@ package me.matsubara.roulette.trait;
 import me.matsubara.roulette.data.Part;
 import me.matsubara.roulette.event.NPCLookCloseModifiedChangeTargetEvent;
 import me.matsubara.roulette.game.Game;
-import me.matsubara.roulette.util.RUtilities;
+import me.matsubara.roulette.util.RUtils;
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.command.CommandConfigurable;
@@ -221,7 +221,8 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
                 --this.t;
                 if (this.lookingAt != null && this.game != null && !game.getPlayers().contains(this.lookingAt.getUniqueId())) {
                     if (!inCooldown(this.lookingAt.getUniqueId()) && this.game.getPlugin().getConfiguration().npcInvite()) {
-                        RUtilities.handleMessage(this.lookingAt, this.game.getPlugin().getMessages().getRandomInvitation());
+                        String npcName = npc.getName().equalsIgnoreCase("") ? null : npc.getName();
+                        RUtils.handleMessage(this.lookingAt, this.game.getPlugin().getMessages().getRandomInvitation(npcName));
                         this.viewers.put(this.lookingAt.getUniqueId(), System.currentTimeMillis() + game.getPlugin().getConfiguration().getInviteInterval());
                     }
 
