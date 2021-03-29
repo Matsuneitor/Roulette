@@ -1,20 +1,20 @@
 package me.matsubara.roulette.gui;
 
-import com.cryptomorin.xseries.XMaterial;
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.data.Chip;
+import me.matsubara.roulette.file.Configuration;
+import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.util.InventoryUpdate;
-import me.matsubara.roulette.util.RUtils;
-import org.bukkit.ChatColor;
-import org.bukkit.NamespacedKey;
+import me.matsubara.roulette.util.ItemBuilder;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class GUI {
 
@@ -25,40 +25,25 @@ public final class GUI {
 
     private int pages, current;
 
-    // Default items.
-    private final ItemStack background, previous, money, exit, next;
+    private final ItemStack background, previous, money, betAll, exit, next;
 
-    public GUI(Roulette plugin, Player player) {
+    public GUI(Roulette plugin, Player player, Game game) {
         this.plugin = plugin;
         this.player = player;
 
-        // Create inventory.
-        this.inventory = plugin.getServer().createInventory(new GUIHolder(this), 36);
+        this.inventory = plugin.getServer().createInventory(new GUIHolder(this, GUIType.CHIP, game), 36);
 
-        // Initialize integers.
         this.pages = 0;
         this.current = 0;
 
-        // Background items.
-        background = XMaterial.GRAY_STAINED_GLASS_PANE.parseItem();
-        Objects.requireNonNull(background, "ItemStack can't be null.");
-        ItemMeta backgroundMeta = background.getItemMeta();
-        if (backgroundMeta != null) {
-            backgroundMeta.setDisplayName(ChatColor.GRAY + "");
-            background.setItemMeta(backgroundMeta);
-        }
-        // Previous page button.
-        previous = plugin.getConfiguration().getItem("previous", null);
+        background = new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).setDisplayName("&7").build();
+        previous = plugin.getConfiguration().getItem("shop", "previous", null);
 
-        // Money display.
-        double balance = plugin.getEconomy().getBalance(player);
-        money = plugin.getConfiguration().getItem("money", plugin.getEconomy().format(balance));
+        money = plugin.getConfiguration().getItem("shop", "money", plugin.getEconomy().format(plugin.getEconomy().getBalance(player)));
+        betAll = plugin.getConfiguration().getItem("shop", "bet-all", null);
 
-        // Exit button.
-        exit = plugin.getConfiguration().getItem("exit", null);
-
-        // Next page button.
-        next = plugin.getConfiguration().getItem("next", null);
+        exit = plugin.getConfiguration().getItem("shop", "exit", null);
+        next = plugin.getConfiguration().getItem("shop", "next", null);
 
         player.openInventory(inventory);
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, this::updateInventory);
@@ -71,7 +56,7 @@ public final class GUI {
         List<Integer> slots = Arrays.asList(10, 11, 12, 13, 14, 15, 16);
 
         // Simple page formula.
-        pages = (int) (Math.ceil((double) plugin.getChips().getList().size() / slots.size()));
+        pages = (int) (Math.ceil((double) plugin.getChips().getChipsList().size() / slots.size()));
 
         // Background items.
         for (int i = 0; i < 35; i++) {
@@ -82,10 +67,8 @@ public final class GUI {
         // Previous page button.
         if (current > 0) inventory.setItem(19, previous);
 
-        // Money display.
         inventory.setItem(22, money);
-
-        // Exit button.
+        inventory.setItem(23, betAll);
         inventory.setItem(35, exit);
 
         // Next page button.
@@ -101,38 +84,27 @@ public final class GUI {
         int startFrom = current * slots.size();
 
         // Populate inventory.
-        for (int index = 0, aux = startFrom; isLast() ? index < plugin.getChips().getList().size() - startFrom : index < slots.size(); index++, aux++) {
-            Chip chip = plugin.getChips().getList().get(aux);
-
-            ItemStack item = RUtils.createHead(chip.getUrl());
-            if (item == null) continue;
-
-            ItemMeta meta = item.getItemMeta();
-            if (meta == null) continue;
+        for (int index = 0, aux = startFrom; isLast() ? index < plugin.getChips().getChipsList().size() - startFrom : index < slots.size(); index++, aux++) {
+            Chip chip = plugin.getChips().getChipsList().get(aux);
 
             double price = chip.getPrice();
 
             String displayName = chip.getDisplayName() != null ? chip.getDisplayName() : plugin.getConfiguration().getChipDisplayName(price);
             List<String> lore = chip.getLore() != null ? chip.getLore() : plugin.getConfiguration().getChipLore();
 
-            meta.setDisplayName(displayName);
-            meta.setLore(lore);
-
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-
-            NamespacedKey key = new NamespacedKey(plugin, "fromRouletteMoney");
-            container.set(key, PersistentDataType.DOUBLE, price);
-
-            key = new NamespacedKey(plugin, "fromRouletteChip");
-            container.set(key, PersistentDataType.STRING, chip.getName());
-
-            item.setItemMeta(meta);
-
-            inventory.setItem(slotIndex.get(index), item);
+            inventory.setItem(slotIndex.get(index), new ItemBuilder(chip.getUrl())
+                    .setDisplayName(displayName)
+                    .setLore(lore)
+                    .plugin(plugin)
+                    .setKey("fromRouletteMoney", price)
+                    .setKey("fromRouletteChip", chip.getName())
+                    .build());
         }
 
         // Update title.
-        InventoryUpdate.updateInventory(player, plugin.getConfiguration().getShopTitle(current + 1, pages));
+        InventoryUpdate.updateInventory(player, Configuration.Config.SHOP_TITLE.asString()
+                .replace("%page%", String.valueOf(current + 1))
+                .replace("%max%", String.valueOf(pages)));
     }
 
     private boolean isLast() {

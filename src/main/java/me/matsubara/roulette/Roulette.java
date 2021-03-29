@@ -10,7 +10,9 @@ import me.matsubara.roulette.file.Chips;
 import me.matsubara.roulette.file.Configuration;
 import me.matsubara.roulette.file.Games;
 import me.matsubara.roulette.file.Messages;
+import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.listener.*;
+import me.matsubara.roulette.listener.npc.NPCRightClick;
 import me.matsubara.roulette.listener.protocol.SteerVehicle;
 import me.matsubara.roulette.trait.LookCloseModified;
 import me.matsubara.roulette.util.CyclicPlaceholderReplacer;
@@ -25,6 +27,7 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Iterator;
 import java.util.logging.Logger;
 
 public final class Roulette extends JavaPlugin {
@@ -76,6 +79,7 @@ public final class Roulette extends JavaPlugin {
                 ChatColor.LIGHT_PURPLE)));
 
         PluginManager manager = getServer().getPluginManager();
+        manager.registerEvents(new NPCRightClick(this), this);
         manager.registerEvents(new EntityDamageByEntity(this), this);
         manager.registerEvents(new EntityDismount(this), this);
         manager.registerEvents(new InventoryClick(this), this);
@@ -98,7 +102,7 @@ public final class Roulette extends JavaPlugin {
 
         saveDefaultConfig();
 
-        if (!configuration.updateCheck()) return;
+        if (!Configuration.Config.UPDATE_CHECKER.asBoolean()) return;
 
         UpdateChecker.init(this, 82197).requestUpdateCheck().whenComplete((result, throwable) -> {
             Logger logger = Roulette.this.getLogger();
@@ -116,6 +120,17 @@ public final class Roulette extends JavaPlugin {
                 logger.warning(String.format("Could not check for new updates! (%s)", reason));
             }
         });
+    }
+
+    @Override
+    public void onDisable() {
+        // Delete every game from the server, but not from games.yml; mainly for /reload.
+        Iterator<Game> iterator = games.getGamesSet().iterator();
+        while (iterator.hasNext()) {
+            Game current = iterator.next();
+            current.delete(false, true, true);
+            iterator.remove();
+        }
     }
 
     private boolean versionAllowed() {

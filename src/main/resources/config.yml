@@ -6,7 +6,6 @@
 # |_|  \_\___/ \__,_|_|\___|\__|\__\___|
 #
 # Developed by Matsuneitor.
-# v5.1-SNAPSHOT.
 # :)
 
 # Whether or not to receive more messages in the console from this plugin (like progress of loaded games, etc.).
@@ -48,8 +47,11 @@ leave-confirm-interval: 2000
 # The delay before you can move your chip (in millis).
 move-chip-interval: 200
 
-# The material that'll be used as a ball by the croupier.
-croupier-ball: SNOWBALL
+croupier-ball:
+  # The material that'll be used as a ball by the croupier.
+  material: SNOWBALL
+  # The speed of the ball (rotation speed).
+  speed: 30.0
 
 # The countdown of each part of the game (in seconds), must be a multiple of 5.
 countdown:
@@ -63,7 +65,7 @@ countdown:
 # Here you can modify the restart time and the amount of fireworks.
 # Be CAREFUL with this, as the fireworks'll be launched based on the restart time.
 # If you want to restart the game in 5s and launch 10 fireworks, then: 5 / 10 = 0.5, this means that every 0.5s a firework'll be launched.
-# NOTE: Both values​must be a multiple of 5, if you don't want fireworks to be launched, set @fireworks to 0.
+# NOTE: Both values must be a multiple of 5, if you don't want fireworks to be launched, set @fireworks to 0.
 restart:
   # In how many seconds the game must be restarted.
   time: 5
@@ -122,6 +124,19 @@ slots:
 type.european: "&a(European)"
 type.american: "&a(American)"
 
+# the title of the inventory used to select the game account.
+search:
+  title: "Search..."
+  text: "Write a name..."
+
+confirm-gui:
+  # The title of the confirm GUI.
+  title: "Are you sure?"
+  # The display name of the confirm item.
+  confirm: "&aConfirm"
+  # The display name of the cancel item.
+  cancel: "&cCancel"
+
 # The hologram to join the game, players must click on the last line.
 # %name% - the name of the game.
 # %playing% - amount of players in the game.
@@ -150,10 +165,63 @@ not-enough-money:
   display-name: "&c¡NOT ENOUGH MONEY!"
   lore: []
 
+# Here you can modify each item within the inventory of the game editor, accessible by right-clicking an NPC.
+# %name% - the name of the game. (@title)
+# %player% - the name of the player. (@account.display-name and no-account.display-name)
+game-menu:
+  title: "Game: %name%"
+  account:
+    display-name: "&aCurrent account: &e%player%"
+    lore:
+      - "&7All the money that players lose in this game"
+      - "&7will be sent to the account of the selected player."
+      - "&7"
+      - "&6Click to change."
+      - "&6Right click to delete."
+  no-account:
+    material: BARRIER
+    display-name: "&cNo player account"
+    lore:
+      - "&7All the money that players lose in this game"
+      - "&7will be sent to the account of the selected player."
+      - "&7"
+      - "&6Click to change."
+  min-amount:
+    material: MINECART
+    display-name: "&aMinimum amount"
+    lore:
+      - "&7The minimum number of players"
+      - "&7required to start a game."
+      - "&7"
+      - "&6Click to increase."
+      - "&6Right click to reduce."
+      - "&7"
+      - "&c(changing this will restart the game)"
+  max-amount:
+    material: CHEST_MINECART
+    display-name: "&aMaximum amount"
+    lore:
+      - "&7The maximum number of players"
+      - "&7this game can have."
+      - "&7"
+      - "&6Click to increase."
+      - "&6Right click to reduce."
+      - "&7"
+      - "&c(changing this will restart the game)"
+  close:
+    material: BARRIER
+    display-name: "&cClose / delete"
+    lore:
+      - "&7Close or delete the current game."
+      - "&7"
+      - "&6Click to close."
+      - "&6Right click to delete."
+
 # Here you can modify each item within the inventory of purchase of chips.
-# %page% - the current page.
-# %max% - the amount of pages.
-# %money% - the money involved.
+# You can't change the material of @chip, as this will use a head with the chip skin, defined in @chips.yml.
+# %page% - the current page. (@title)
+# %max% - the amount of pages. (@title)
+# %money% - the money involved. (@chip.display-name and @money.display-name)
 shop:
   title: "Chips (page %page%/%max%)"
   chip:
@@ -171,6 +239,13 @@ shop:
     material: PLAYER_HEAD
     display-name: "&6Your wallet: &e%money%"
     lore: []
+  bet-all:
+    url: "e36e94f6c34a35465fce4a90f2e25976389eb9709a12273574ff70fd4daa6852"
+    material: PLAYER_HEAD
+    display-name: "&aBet all"
+    lore:
+      - "&7Bet all your money on this game."
+      - "&c(you'll have to confirm)"
   exit:
     material: BARRIER
     display-name: "&cExit"

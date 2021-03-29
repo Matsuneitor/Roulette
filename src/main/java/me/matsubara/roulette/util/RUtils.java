@@ -1,15 +1,17 @@
 package me.matsubara.roulette.util;
 
-import com.cryptomorin.xseries.ReflectionUtils;
-import com.cryptomorin.xseries.XMaterial;
-import com.cryptomorin.xseries.messages.ActionBar;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.data.Slot;
+import me.matsubara.roulette.file.Configuration;
+import me.matsubara.roulette.util.xseries.ReflectionUtils;
+import me.matsubara.roulette.util.xseries.messages.ActionBar;
 import net.md_5.bungee.api.ChatColor;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.Validate;
+import org.bukkit.Color;
+import org.bukkit.Material;
 import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -19,6 +21,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
@@ -27,9 +30,25 @@ import java.util.regex.Pattern;
 
 public final class RUtils {
 
-    // Not the best way to access the plugin tbh.
-    private final static Roulette plugin = JavaPlugin.getPlugin(Roulette.class);
-    private final static Pattern pattern = Pattern.compile("(&)?&#([0-9a-fA-F]{6})");
+    private final static Roulette PLUGIN = JavaPlugin.getPlugin(Roulette.class);
+    private final static Pattern PATTERN = Pattern.compile("(&)?&#([0-9a-fA-F]{6})");
+
+    public final static Color[] COLORS = getColors();
+
+    private static Color[] getColors() {
+        Field[] fields = Color.class.getDeclaredFields();
+
+        List<Color> results = new ArrayList<>();
+        for (Field field : fields) {
+            if (!field.getType().equals(Color.class)) continue;
+            try {
+                results.add((Color) field.get(null));
+            } catch (IllegalAccessException exception) {
+                exception.printStackTrace();
+            }
+        }
+        return results.toArray(new Color[0]);
+    }
 
     private static final BlockFace[] AXIS = {
             BlockFace.NORTH,
@@ -104,9 +123,7 @@ public final class RUtils {
     public static ItemStack createHead(String url) {
         url = "http://textures.minecraft.net/texture/" + url;
 
-        ItemStack item = XMaterial.PLAYER_HEAD.parseItem();
-        if (item == null) return null;
-
+        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) item.getItemMeta();
         if (meta == null) return null;
 
@@ -136,7 +153,7 @@ public final class RUtils {
 
         if (getMajorVersion() < 16) return oldTranslate(message);
 
-        Matcher matcher = pattern.matcher(oldTranslate(message));
+        Matcher matcher = PATTERN.matcher(oldTranslate(message));
         StringBuffer buffer = new StringBuffer();
 
         while (matcher.find()) {
@@ -159,7 +176,7 @@ public final class RUtils {
             sender.sendMessage(newMessage);
             return;
         }
-        ActionBar.sendActionBar(plugin, ((Player) sender), newMessage, 50L);
+        ActionBar.sendActionBar(PLUGIN, ((Player) sender), newMessage, 50L);
     }
 
     public static String getSlotName(Slot slot) {
@@ -167,29 +184,29 @@ public final class RUtils {
             String number = slot.isDoubleZero() ? "00" : String.valueOf(slot.getInts()[0]);
             switch (slot.getColor()) {
                 case RED:
-                    return plugin.getConfiguration().getSingleRed(number);
+                    return Configuration.Config.SINGLE_RED.asString().replace("%number%", number);
                 case BLACK:
-                    return plugin.getConfiguration().getSingleBlack(number);
+                    return Configuration.Config.SINGLE_BLACK.asString().replace("%number%", number);
                 default:
-                    return plugin.getConfiguration().getZero(number);
+                    return Configuration.Config.SINGLE_ZERO.asString().replace("%number%", number);
             }
         } else if (slot.isColumn() || slot.isDozen()) {
             boolean isColumn = slot.isColumn();
-            return plugin.getConfiguration().getColumnOrDozen(isColumn ? "column" : "dozen", isColumn ? slot.getColumn() : slot.getDozen());
+            return PLUGIN.getConfiguration().getColumnOrDozen(isColumn ? "column" : "dozen", isColumn ? slot.getColumn() : slot.getDozen());
         }
         switch (slot) {
             case LOW:
-                return plugin.getConfiguration().getLow();
+                return Configuration.Config.LOW.asString();
             case EVEN:
-                return plugin.getConfiguration().getEven();
+                return Configuration.Config.EVEN.asString();
             case ODD:
-                return plugin.getConfiguration().getOdd();
+                return Configuration.Config.ODD.asString();
             case HIGH:
-                return plugin.getConfiguration().getHigh();
+                return Configuration.Config.HIGH.asString();
             case RED:
-                return plugin.getConfiguration().getNameRed();
+                return Configuration.Config.RED.asString();
             default:
-                return plugin.getConfiguration().getNameBlack();
+                return Configuration.Config.BLACK.asString();
         }
     }
 

@@ -1,7 +1,7 @@
 package me.matsubara.roulette.data;
 
-import com.cryptomorin.xseries.XMaterial;
 import org.apache.commons.lang.ArrayUtils;
+import org.bukkit.Material;
 
 public enum Part {
     // Borders of the table.
@@ -143,6 +143,9 @@ public enum Part {
     // Target entity for the NPC.
     NPC_TARGET("MATERIAL:EMPTY", -1.275d, 2.1d, 0.0d),
 
+    // The ball.
+    BALL("MATERIAL:END_ROD", -0.890625d, -0.15d, -0.890625d),
+
     // Slots for the 0 & 00, if using an american table.
     SLOT_SINGLE_ZERO("8bad26ccb4f8937ffcfe9e0ef49b7cea7672c98f68ead7f8f901a22349029301", -0.3235d, 1.585d, -0.895d),
     SLOT_DOUBLE_ZERO("8bad26ccb4f8937ffcfe9e0ef49b7cea7672c98f68ead7f8f901a22349029301", -0.3235d, 1.585d, -1.489d),
@@ -267,13 +270,21 @@ public enum Part {
         return this == NPC_TARGET;
     }
 
+    public boolean isBall() {
+        return this == BALL;
+    }
+
     public String getUrl() {
         return isMaterial() ? url.substring(9) : url;
     }
 
-    public XMaterial getXMaterial() {
+    public Material getMaterial() {
         if (!isMaterial()) return null;
-        return XMaterial.matchXMaterial(getUrl()).orElse(null);
+        try {
+            return Material.valueOf(getUrl());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     public static int getSize(boolean isEuropean) {

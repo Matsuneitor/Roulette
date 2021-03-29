@@ -1,6 +1,7 @@
 package me.matsubara.roulette.listener;
 
 import me.matsubara.roulette.Roulette;
+import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.util.RUtils;
 import org.bukkit.NamespacedKey;
@@ -36,9 +37,13 @@ public final class PlayerArmorStandManipulate implements Listener {
         Player player = event.getPlayer();
 
         // If the player is sneaking and has admin permissions, delete the game.
-        if (game != null && game.isDone() && player.isSneaking() && player.hasPermission("roulette.admin")) {
-            game.delete(true, false);
-            RUtils.handleMessage(player, plugin.getMessages().getDelete(game.getName()));
+        if (game != null && game.isDone() && player.isSneaking() && player.hasPermission("roulette.delete")) {
+            if (!game.getData().getCreator().equals(player.getUniqueId()) && !player.hasPermission("roulette.delete.others")) {
+                RUtils.handleMessage(player, Messages.Message.NOT_PERMISSION.asString());
+                return;
+            }
+            game.delete(true, false, false);
+            RUtils.handleMessage(player, Messages.Message.DELETE.asString().replace("%name%", game.getName()));
         }
         event.setCancelled(true);
     }

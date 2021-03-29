@@ -1,3 +1,23 @@
+# Here you can create all of the chips for the games.
+#
+# For the URL, you can go to https://minecraft-heads.com/, select a custom head,
+# scroll all the way down and click on "Copy" on the last box, under the name Minecraft-URL.
+#
+# If you want to use custom heads, you can go to https://mineskin.org/, select the file of the skin and upload it,
+# when it's done it'll show you some weird strings, go to the one called "Texture URL" and copy it,
+# you need to remove "http://textures.minecraft.net/texture/", we just need the last string.
+#
+# You can set differents names and lore for all chips, like this:
+#
+# PURPLE:
+#   display-name: "&5Purple &lCHIP"
+#   lore:
+#     - "&7This is a purple chip, worth 5$"
+#   url: "a9d68bcb0ef127f58fd93b85a7b0a47a3cff5ca688a86cc5e4bdd110e7ec717c"
+#   price: 50.0
+#
+# Otherwise, it'll use the name and lore of the config.yml.
+
 chips:
   PURPLE:
     url: "a9d68bcb0ef127f58fd93b85a7b0a47a3cff5ca688a86cc5e4bdd110e7ec717c"

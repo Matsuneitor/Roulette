@@ -2,6 +2,7 @@ package me.matsubara.roulette.trait;
 
 import me.matsubara.roulette.data.Part;
 import me.matsubara.roulette.event.NPCLookCloseModifiedChangeTargetEvent;
+import me.matsubara.roulette.file.Configuration;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.util.RUtils;
 import net.citizensnpcs.Settings.Setting;
@@ -57,7 +58,7 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
     private static final Location NPC_LOCATION = new Location(null, 0.0d, 0.0d, 0.0d);
     private static final Location PLAYER_LOCATION = new Location(null, 0.0d, 0.0d, 0.0d);
     private Game game;
-    private Map<UUID, Long> viewers;
+    private final Map<UUID, Long> viewers;
 
     public LookCloseModified() {
         super("lookclosemodified");
@@ -182,6 +183,7 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
     }
 
     public void lookClose(boolean lookClose) {
+        Util.faceEntity(this.npc.getEntity(), this.game.getParts().get(Part.NPC_TARGET));
         this.enabled = lookClose;
     }
 
@@ -220,10 +222,9 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
 
                 --this.t;
                 if (this.lookingAt != null && this.game != null && !game.getPlayers().contains(this.lookingAt.getUniqueId())) {
-                    if (!inCooldown(this.lookingAt.getUniqueId()) && this.game.getPlugin().getConfiguration().npcInvite()) {
-                        String npcName = npc.getName().equalsIgnoreCase("") ? null : npc.getName();
-                        RUtils.handleMessage(this.lookingAt, this.game.getPlugin().getMessages().getRandomInvitation(npcName));
-                        this.viewers.put(this.lookingAt.getUniqueId(), System.currentTimeMillis() + game.getPlugin().getConfiguration().getInviteInterval());
+                    if (!inCooldown(this.lookingAt.getUniqueId()) && Configuration.Config.NPC_INVITE.asBoolean()) {
+                        RUtils.handleMessage(this.lookingAt, this.game.getPlugin().getMessages().getRandomNPCMessage(npc, "invitations"));
+                        this.viewers.put(this.lookingAt.getUniqueId(), System.currentTimeMillis() + Configuration.Config.INVITE_INTERVAL.asLong());
                     }
 
                     Util.faceEntity(this.npc.getEntity(), this.lookingAt);
@@ -252,7 +253,7 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
             return;
         }
 
-        if (game == null || !game.getPlugin().getConfiguration().npcImitate()) {
+        if (game == null || !Configuration.Config.NPC_IMITATE.asBoolean()) {
             return;
         }
 

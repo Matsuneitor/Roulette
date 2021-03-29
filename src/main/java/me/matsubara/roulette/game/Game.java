@@ -1,8 +1,5 @@
 package me.matsubara.roulette.game;
 
-import com.cryptomorin.xseries.XMaterial;
-import com.cryptomorin.xseries.XSound;
-import com.cryptomorin.xseries.messages.ActionBar;
 import com.gmail.filoghost.holographicdisplays.api.Hologram;
 import com.gmail.filoghost.holographicdisplays.api.HologramsAPI;
 import com.gmail.filoghost.holographicdisplays.api.line.TextLine;
@@ -11,12 +8,15 @@ import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.data.Chip;
 import me.matsubara.roulette.data.Part;
 import me.matsubara.roulette.data.Slot;
+import me.matsubara.roulette.file.Configuration;
+import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.listener.holographic.TouchHandler;
 import me.matsubara.roulette.runnable.Selecting;
 import me.matsubara.roulette.runnable.Sorting;
 import me.matsubara.roulette.runnable.Starting;
 import me.matsubara.roulette.trait.LookCloseModified;
 import me.matsubara.roulette.util.RUtils;
+import me.matsubara.roulette.util.xseries.messages.ActionBar;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.trait.trait.Equipment;
@@ -26,6 +26,7 @@ import org.apache.commons.lang.Validate;
 import org.bukkit.*;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -35,7 +36,6 @@ import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 
 import javax.annotation.Nullable;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -75,7 +75,6 @@ public final class Game {
     // Game runnables.
     private Starting start;
     private Selecting select;
-
     private Sorting sort;
 
     // NPC data.
@@ -87,12 +86,12 @@ public final class Game {
     private final Hologram joinHologram;
     private final Hologram spinHologram;
     private final GameType type;
+    private OfflinePlayer account;
     private GameState state;
     private Slot winner;
 
-    private final Color[] colors;
     private final BlockFace[] faces;
-    private Integer task;
+    private final Integer task;
 
     public Game(Roulette plugin, GameData data) {
         this.plugin = plugin;
@@ -125,7 +124,7 @@ public final class Game {
         HologramsAPI.registerPlaceholder(plugin, placeholder, 1.0d, () -> String.valueOf(players.size()));
         placeholders.add(placeholder);
 
-        Location join = location.clone().add(RUtils.offsetVector(new Vector(1.17d, 3.5d, -0.585d), location.getYaw(), location.getPitch()));
+        Location join = location.clone().add(RUtils.offsetVector(new Vector(1.78125d, 3.5d, -0.59375d), location.getYaw(), location.getPitch()));
         this.joinHologram = HologramsAPI.createHologram(plugin, join);
         this.joinHologram.setAllowPlaceholders(true);
 
@@ -134,13 +133,16 @@ public final class Game {
         this.spinHologram.setAllowPlaceholders(true);
 
         // If the type is changed wrong from games.yml, set AMERICAN by default.
-        this.type = data.getType() == null ? GameType.AMERICAN : data.getType();
+        this.type = (data.getType() == null) ? GameType.AMERICAN : data.getType();
+
+        OfflinePlayer player = (data.getAccount() == null) ? null : Bukkit.getOfflinePlayer(data.getAccount());
+        this.account = (player != null && player.hasPlayedBefore()) ? player : null;
+
         this.state = GameState.WAITING;
 
-        this.colors = getColors();
         this.faces = RUtils.getCorrectFacing(RUtils.faceFromYaw(location.getYaw(), false));
 
-        Player creator = data.getCreator();
+        Player creator = Bukkit.getPlayer(data.getCreator());
         if (creator != null) CREATING.add(creator.getUniqueId());
 
         this.task = new BukkitRunnable() {
@@ -166,15 +168,17 @@ public final class Game {
 
             // Send created message to the crator.
             if (creator != null && creator.isOnline()) {
-                RUtils.handleMessage(creator, plugin.getMessages().getCreate(name));
+                RUtils.handleMessage(creator, Messages.Message.CREATE.asString().replace("%name%", name));
             }
 
             // Load NPC after, since Citizens load NPC's later (or that's what I heard).
             loadNPC();
 
             if (creator != null) CREATING.remove(creator.getUniqueId());
+
             plugin.getGames().saveGame(this);
             plugin.getGames().createNextName();
+
             this.isDone = true;
 
             if (task == null) return;
@@ -208,8 +212,13 @@ public final class Game {
             stand.setVisible(part.isSpinner());
             stand.setBasePlate(!part.isSpinner());
         } else if (part.isMaterial()) {
-            stand.getEquipment().setHelmet(part.getXMaterial().parseItem());
-            switch (part.getXMaterial()) {
+            stand.getEquipment().setHelmet(new ItemStack(part.getMaterial()));
+            switch (part.getMaterial()) {
+                case END_ROD:
+                    if (!part.isBall()) break;
+                    stand.getEquipment().setHelmet(null);
+                    stand.setHeadPose(new EulerAngle(Math.toRadians(300.0d), 0.0d, 0.0d));
+                    break;
                 case SPRUCE_SLAB:
                     if (part.isChair()) {
                         stand.setHeadPose(new EulerAngle(Math.toRadians(0.0d), 0.0d, 0.0d));
@@ -256,13 +265,17 @@ public final class Game {
             parts.put(part, stand);
         }
 
-        if (!plugin.getConfiguration().enableDebug()) return;
+        if (!Configuration.Config.DEBUG.asBoolean()) return;
 
         int percent = (int) ((int) Math.round(((index + 1) * 100.0d / size) * 10.0d) / 10.0d);
 
         if (creator != null && creator.isOnline()) {
-            String progress = getProgressBar(index + 1, size, 30, plugin.getConfiguration().getProgressCharacter(), ChatColor.GREEN, ChatColor.GRAY);
-            ActionBar.sendActionBar(creator, plugin.getConfiguration().getProgress(percent, progress, name, plugin.getGames().getGameDatas().size()));
+            String progress = getProgressBar(index + 1, size, 30, Configuration.Config.PROGRESS_CHARACTER.asChar(), ChatColor.GREEN, ChatColor.GRAY);
+            ActionBar.sendActionBar(creator, Configuration.Config.PROGRESS.asString()
+                    .replace("%percent%", String.valueOf(percent))
+                    .replace("%progress-bar%", progress)
+                    .replace("%game%", name)
+                    .replace("%left%", String.valueOf(plugin.getGames().getGameDatas().size())));
         }
 
         if (!ArrayUtils.contains(TIMESTAMP, percent)) return;
@@ -276,14 +289,17 @@ public final class Game {
 
     private void modifyArmorStand(ArmorStand stand) {
         stand.setAI(false);
+        stand.setCustomName("roulette-armor-stand");
+        stand.setCustomNameVisible(false);
         stand.setCollidable(false);
         stand.setInvulnerable(true);
         stand.setPersistent(false);
         stand.setRemoveWhenFarAway(false);
         stand.setSilent(true);
-        stand.setCanPickupItems(false);
         stand.setVisible(false);
         stand.setGravity(false);
+        stand.setArms(false);
+        stand.setBasePlate(false);
     }
 
     private void loadNPC() {
@@ -307,20 +323,16 @@ public final class Game {
         npc.getOrAddTrait(Equipment.class).set(Equipment.EquipmentSlot.HAND, plugin.getConfiguration().getBall());
 
         // Set NPC look around for players.
-        if (plugin.getConfiguration().npcLookAround()) {
+        if (Configuration.Config.NPC_LOOK_AROUND.asBoolean()) {
             npc.getOrAddTrait(LookCloseModified.class).setGame(this);
             npc.getOrAddTrait(LookCloseModified.class).setRealisticLooking(true);
-            npc.getOrAddTrait(LookCloseModified.class).setRange(plugin.getConfiguration().getLookDistance());
+            npc.getOrAddTrait(LookCloseModified.class).setRange(Configuration.Config.LOOK_DISTANCE.asInt());
+            npc.getOrAddTrait(LookCloseModified.class).lookClose(true);
         }
 
         // Hide NPC name if no name was supplied.
         if (npcName == null || npcName.equalsIgnoreCase("")) {
             npc.data().setPersistent(NPC.NAMEPLATE_VISIBLE_METADATA, false);
-        }
-
-        // Start LookCloseModified after spawning every armor stand.
-        if (plugin.getConfiguration().npcLookAround()) {
-            npc.getOrAddTrait(LookCloseModified.class).lookClose(true);
         }
     }
 
@@ -332,11 +344,12 @@ public final class Game {
     }
 
     public void setupJoinHologram(String placeholder) {
+        if (joinHologram == null || joinHologram.isDeleted()) return;
         if (joinHologram.size() > 0) joinHologram.clearLines();
 
-        String type = this.type.isEuropean() ? plugin.getConfiguration().getEuropeanType() : plugin.getConfiguration().getAmericanType();
+        String type = this.type.isEuropean() ? Configuration.Config.TYPE_EUROPEAN.asString() : Configuration.Config.TYPE_AMERICAN.asString();
 
-        List<String> lines = plugin.getConfiguration().getJoinHologram();
+        List<String> lines = Configuration.Config.JOIN_HOLOGRAM.asList();
         for (String line : lines) {
             TextLine text = joinHologram.appendTextLine(line
                     .replaceAll("%name%", name)
@@ -348,24 +361,8 @@ public final class Game {
         }
     }
 
-    public Color[] getColors() {
-        Field[] fields = Color.class.getDeclaredFields();
-
-        List<Color> results = new ArrayList<>();
-        for (Field field : fields) {
-            if (!field.getType().equals(Color.class)) continue;
-
-            try {
-                results.add((Color) field.get(null));
-            } catch (IllegalAccessException exception) {
-                exception.printStackTrace();
-            }
-        }
-        return results.toArray(new Color[0]);
-    }
-
     public boolean isTopChair(Part part) {
-        return part.getXMaterial() != null && part.getXMaterial() == XMaterial.SPRUCE_SLAB && part.isChair();
+        return part.getMaterial() != null && part.getMaterial() == Material.SPRUCE_SLAB && part.isChair();
     }
 
     public boolean spaceAvailable() {
@@ -386,7 +383,6 @@ public final class Game {
 
     public void addPlayer(Player player) {
         if (!spaceAvailable()) return;
-
         if (inGame(player)) return;
 
         joinHologram.getVisibilityManager().hideTo(player);
@@ -418,6 +414,7 @@ public final class Game {
         }
 
         if (players.isEmpty() && !state.isWaiting() && !state.isEnding()) restart();
+        if (players.size() < minPlayers && state.isCountdown()) restart();
     }
 
     public void broadcast(String message) {
@@ -442,7 +439,6 @@ public final class Game {
 
     private void removePlayerHologram(Player player) {
         if (!holograms.containsKey(player.getUniqueId())) return;
-
         String placeholder = String.format(S_BET, player.getName());
         HologramsAPI.unregisterPlaceholder(plugin, placeholder);
         holograms.get(player.getUniqueId()).delete();
@@ -451,7 +447,6 @@ public final class Game {
 
     public void previousChair(Player player) {
         if (!isChairAvailable()) return;
-
         if (player.getVehicle() == null) return;
 
         PersistentDataContainer container = player.getVehicle().getPersistentDataContainer();
@@ -465,19 +460,16 @@ public final class Game {
         ArmorStand chair;
         do {
             ordinal--;
-            if (ordinal < 0) {
-                ordinal = chairs.size() - 1;
-            }
+            if (ordinal < 0) ordinal = chairs.size() - 1;
             chair = chairs.get(ordinal);
         } while (hasPassengers(chair));
 
         Location location = player.getLocation().setDirection(chair.getLocation().getDirection());
 
-        if (plugin.getConfiguration().fixChairCamera()) {
-            player.teleport(location);
-        }
+        if (Configuration.Config.FIX_CHAIR_CAMERA.asBoolean()) player.teleport(location);
 
-        XSound.play(location, plugin.getConfiguration().getSwapSound());
+        Validate.notNull(location.getWorld(), "World can't be null.");
+        location.getWorld().playSound(location, Sound.valueOf(Configuration.Config.SOUND_SWAP_CHAIR.asString()), 1.0f, 1.0f);
         addPassenger(chair, player);
     }
 
@@ -490,9 +482,10 @@ public final class Game {
                 if (hasPassengers(chair)) continue;
 
                 Location location = player.getLocation().clone().setDirection(chair.getLocation().getDirection());
-                if (plugin.getConfiguration().fixChairCamera()) player.teleport(location);
+                if (Configuration.Config.FIX_CHAIR_CAMERA.asBoolean()) player.teleport(location);
 
-                XSound.play(location, plugin.getConfiguration().getSwapSound());
+                Validate.notNull(location.getWorld(), "World can't be null.");
+                location.getWorld().playSound(location, Sound.valueOf(Configuration.Config.SOUND_SWAP_CHAIR.asString()), 1.0f, 1.0f);
                 addPassenger(chair, player);
                 break;
             }
@@ -512,19 +505,16 @@ public final class Game {
         ArmorStand chair;
         do {
             ordinal++;
-            if (ordinal > chairs.size() - 1) {
-                ordinal = 0;
-            }
+            if (ordinal > chairs.size() - 1) ordinal = 0;
             chair = chairs.get(ordinal);
         } while (hasPassengers(chair));
 
         Location location = player.getLocation().setDirection(chair.getLocation().getDirection());
 
-        if (plugin.getConfiguration().fixChairCamera()) {
-            player.teleport(location);
-        }
+        if (Configuration.Config.FIX_CHAIR_CAMERA.asBoolean()) player.teleport(location);
 
-        XSound.play(location, plugin.getConfiguration().getSwapSound());
+        Validate.notNull(location.getWorld(), "World can't be null.");
+        location.getWorld().playSound(location, Sound.valueOf(Configuration.Config.SOUND_SWAP_CHAIR.asString()), 1.0f, 1.0f);
         addPassenger(chair, player);
     }
 
@@ -557,15 +547,22 @@ public final class Game {
 
     public void start() {
         if (!state.isWaiting()) return;
-
         start = new Starting(plugin, this);
         start.runTaskTimer(plugin, 0L, 20L);
         setCountdown();
     }
 
     public void restart() {
+        // TODO: Testing...
+        if (state == GameState.WAITING && players.isEmpty()) return;
         if (npc != null && (state.isSpinning() || state.isEnding())) {
             npc.getOrAddTrait(Equipment.class).set(Equipment.EquipmentSlot.HAND, plugin.getConfiguration().getBall());
+        }
+
+        if (parts.get(Part.BALL) != null) {
+            //noinspection ConstantConditions, 100% sure won't happen.
+            parts.get(Part.BALL).getEquipment().setHelmet(null);
+            parts.get(Part.BALL).setHeadPose(new EulerAngle(Math.toRadians(300.0d), 0.0d, 0.0d));
         }
 
         Iterator<UUID> iterator = players.iterator();
@@ -579,17 +576,14 @@ public final class Game {
 
         cancelRunnables(start, select, sort);
 
-        if (spinHologram.size() > 0) {
-            spinHologram.clearLines();
-        }
+        if (spinHologram.size() > 0) spinHologram.clearLines();
 
-        if (npc != null && plugin.getConfiguration().npcLookAround()) {
+        if (npc != null && Configuration.Config.NPC_LOOK_AROUND.asBoolean()) {
             npc.getOrAddTrait(LookCloseModified.class).lookClose(true);
         }
 
         // Set the game state to waiting after 1 second, to prevent unwanted messages.
         new BukkitRunnable() {
-
             @Override
             public void run() {
                 setWaiting();
@@ -633,15 +627,42 @@ public final class Game {
             }
         }
 
+        if (account != null) {
+            double total = 0;
+
+            for (UUID uuid : players) {
+                OfflinePlayer offline = Bukkit.getOfflinePlayer(uuid);
+
+                if (winners.contains(offline.getPlayer())) continue;
+                if (account.isOnline() && account.equals(offline)) continue;
+
+                Chip chip = chips.get(uuid);
+
+                EconomyResponse response = plugin.getEconomy().depositPlayer(account, chip.getPrice());
+                if (!response.transactionSuccess()) {
+                    plugin.getLogger().info(String.format("It wasn't possible to deposit $%s to %s.", chip.getPrice(), account.getName()));
+                    continue;
+                }
+                total += chip.getPrice();
+            }
+
+            if (account.isOnline()) {
+                RUtils.handleMessage(account.getPlayer(), Messages.Message.RECEIVED.asString()
+                        .replace("%money%", String.valueOf(total))
+                        .replace("%name%", name));
+            }
+        }
+
         if (winners.isEmpty()) {
-            broadcast(plugin.getMessages().getNoWinner());
-            broadcast(plugin.getMessages().getRestart());
-            plugin.getServer().getScheduler().runTaskLater(plugin, this::restart, plugin.getConfiguration().getRestartTime() * 20L);
+            broadcast(Messages.Message.NO_WINNER.asString());
+            broadcast(Messages.Message.RESTART.asString());
+            plugin.getServer().getScheduler().runTaskLater(plugin, this::restart, Configuration.Config.RESTART_TIME.asInt() * 20L);
             return;
         }
 
         String[] names = winners.stream().map(Player::getName).toArray(String[]::new);
 
+        broadcast(plugin.getMessages().getRandomNPCMessage(npc, "winner"));
         broadcast(plugin.getMessages().getWinners(names.length, Arrays.toString(names)));
 
         for (Player winner : winners) {
@@ -650,14 +671,17 @@ public final class Game {
             double price = chip.getPrice() * slot.getMultiplier();
 
             EconomyResponse response = plugin.getEconomy().depositPlayer(winner, price);
-            if (response.transactionSuccess()) {
-                RUtils.handleMessage(winner, plugin.getMessages().getPrice(plugin.getEconomy().format(price), slot.getMultiplier()));
+            if (!response.transactionSuccess()) {
+                plugin.getLogger().info(String.format("It wasn't possible to deposit $%s to %s.", chip.getPrice(), account.getName()));
+                continue;
             }
+
+            RUtils.handleMessage(winner, plugin.getMessages().getPrice(plugin.getEconomy().format(price), slot.getMultiplier()));
         }
 
-        if (plugin.getConfiguration().getFireworks() == 0) {
-            broadcast(plugin.getMessages().getRestart());
-            plugin.getServer().getScheduler().runTaskLater(plugin, this::restart, plugin.getConfiguration().getRestartTime() * 20L);
+        if (Configuration.Config.RESTART_FIREWORKS.asInt() == 0) {
+            broadcast(Messages.Message.RESTART.asString());
+            plugin.getServer().getScheduler().runTaskLater(plugin, this::restart, Configuration.Config.RESTART_TIME.asInt() * 20L);
             return;
         }
 
@@ -666,7 +690,7 @@ public final class Game {
 
             @Override
             public void run() {
-                if (amount == plugin.getConfiguration().getFireworks()) {
+                if (amount == Configuration.Config.RESTART_FIREWORKS.asInt()) {
                     restart();
                     cancel();
                 }
@@ -674,7 +698,8 @@ public final class Game {
                 amount++;
             }
         }.runTaskTimer(plugin, 0L, plugin.getConfiguration().getPeriod());
-        broadcast(plugin.getMessages().getRestart());
+
+        broadcast(Messages.Message.RESTART.asString());
     }
 
     private void spawnFirework(Location location) {
@@ -687,8 +712,8 @@ public final class Game {
         FireworkEffect.Builder builder = FireworkEffect.builder()
                 .flicker(true)
                 .trail(true)
-                .withColor(colors[random.nextInt(colors.length)])
-                .withFade(colors[random.nextInt(colors.length)]);
+                .withColor(RUtils.COLORS[random.nextInt(RUtils.COLORS.length)])
+                .withFade(RUtils.COLORS[random.nextInt(RUtils.COLORS.length)]);
 
         FireworkEffect.Type[] types = FireworkEffect.Type.values();
         builder.with(types[random.nextInt(types.length)]);
@@ -697,14 +722,13 @@ public final class Game {
         meta.setPower(random.nextInt(1, 5));
         firework.setFireworkMeta(meta);
 
-        if (plugin.getConfiguration().instantExplode()) {
+        if (Configuration.Config.INSTANT_EXPLODE.asBoolean()) {
             plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, firework::detonate, 1L);
         }
     }
 
     public void previousChip(UUID uuid) {
         if (!isSlotAvailable()) return;
-
         if (!chips.containsKey(uuid)) return;
 
         int ordinal = ArrayUtils.indexOf(Slot.getValues(type.isEuropean()), selected.get(uuid).getKey());
@@ -712,9 +736,7 @@ public final class Game {
         Slot slot;
         do {
             ordinal--;
-            if (ordinal < 0) {
-                ordinal = Slot.getValues(type.isEuropean()).length - 1;
-            }
+            if (ordinal < 0) ordinal = Slot.getValues(type.isEuropean()).length - 1;
             slot = Slot.getValues(type.isEuropean())[ordinal];
         } while (alreadySelected(slot));
 
@@ -726,7 +748,6 @@ public final class Game {
 
     public void nextChip(UUID uuid) {
         if (!isSlotAvailable()) return;
-
         if (!chips.containsKey(uuid)) return;
 
         if (!selected.containsKey(uuid)) {
@@ -746,9 +767,7 @@ public final class Game {
         Slot slot;
         do {
             ordinal++;
-            if (ordinal > Slot.getValues(type.isEuropean()).length - 1) {
-                ordinal = 0;
-            }
+            if (ordinal > Slot.getValues(type.isEuropean()).length - 1) ordinal = 0;
             slot = Slot.getValues(type.isEuropean())[ordinal];
         } while (alreadySelected(slot));
 
@@ -768,9 +787,7 @@ public final class Game {
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean isSlotAvailable() {
         for (Slot slot : Slot.getValues(type.isEuropean())) {
-            if (alreadySelected(slot)) {
-                continue;
-            }
+            if (alreadySelected(slot)) continue;
             return true;
         }
         return false;
@@ -804,7 +821,7 @@ public final class Game {
         Location where = selected.get(uuid).getValue().getLocation().clone().add(offset);
 
         Validate.notNull(where.getWorld(), "World can't be null.");
-        XSound.play(where, plugin.getConfiguration().getSelectSound());
+        where.getWorld().playSound(where, Sound.valueOf(Configuration.Config.SOUND_SELECT.asString()), 1.0f, 1.0f);
 
         if (holograms.containsKey(uuid)) {
             holograms.get(uuid).teleport(where);
@@ -824,23 +841,22 @@ public final class Game {
         hologram.getVisibilityManager().showTo(player);
         hologram.setAllowPlaceholders(true);
 
-        for (String line : plugin.getConfiguration().getSelectHologram()) {
+        for (String line : Configuration.Config.SELECT_HOLOGRAM.asList()) {
             hologram.appendTextLine(line
                     .replaceAll("%player%", player.getName())
-                    .replaceAll("%bet%", String.format(S_BET, player.getName()))
+                    .replaceAll("%bet%", placeholder)
             );
         }
+
         holograms.put(uuid, hologram);
     }
 
     public String getPlayerBet(UUID uuid) {
         if (!selected.containsKey(uuid)) return null;
-
-        Slot slot = selected.get(uuid).getKey();
-        return RUtils.getSlotName(slot);
+        return RUtils.getSlotName(selected.get(uuid).getKey());
     }
 
-    public void delete(boolean removeNPC, boolean isIterator) {
+    public void delete(boolean removeNPC, boolean isIterator, boolean isGlobalReload) {
         restart();
 
         placeholders.forEach(placeholder -> HologramsAPI.unregisterPlaceholder(plugin, placeholder));
@@ -858,15 +874,23 @@ public final class Game {
         chairs.forEach(Entity::remove);
         chairs.clear();
 
-        joinHologram.delete();
-        spinHologram.delete();
+        deleteHolograms(joinHologram, spinHologram);
 
         if (npc != null) {
             npc.getOrAddTrait(LookCloseModified.class).lookClose(false);
             if (removeNPC) npc.destroy();
         }
 
+        // If is global reload (/reload) we only want to delete the game from the server, not from games.yml.
+        if (isGlobalReload) return;
+
         plugin.getGames().deleteGame(this, isIterator);
+    }
+
+    private void deleteHolograms(Hologram... holograms) {
+        for (Hologram hologram : holograms) {
+            if (hologram != null && !hologram.isDeleted()) hologram.delete();
+        }
     }
 
     public Roulette getPlugin() {
@@ -937,6 +961,10 @@ public final class Game {
         return type;
     }
 
+    public OfflinePlayer getAccount() {
+        return account;
+    }
+
     public GameState getState() {
         return state;
     }
@@ -958,7 +986,7 @@ public final class Game {
     }
 
     public void setMaxPlayers(int maxPlayers) {
-        this.maxPlayers = maxPlayers < minPlayers ? (minPlayers == 10 ? 10 : minPlayers + 1) : Math.min(maxPlayers, 10);
+        this.maxPlayers = maxPlayers < minPlayers ? (minPlayers == 10 ? 10 : minPlayers) : Math.min(maxPlayers, 10);
     }
 
     public void setLimitPlayers(int minPlayers, int maxPlayers) {
@@ -968,7 +996,6 @@ public final class Game {
 
     public void setWaiting() {
         state = GameState.WAITING;
-        // Show the join hologram to every player.
         joinHologram.getVisibilityManager().setVisibleByDefault(true);
         joinHologram.getVisibilityManager().resetVisibilityAll();
     }
@@ -979,8 +1006,12 @@ public final class Game {
 
     public void setSelecting() {
         state = GameState.SELECTING;
-        // Hide the join hologram to every player.
         joinHologram.getVisibilityManager().setVisibleByDefault(false);
+    }
+
+    public void setAccount(OfflinePlayer account) {
+        this.account = account;
+        plugin.getGames().saveGame(this);
     }
 
     public void setSpinning() {

@@ -1,7 +1,6 @@
 package me.matsubara.roulette.game;
 
 import org.bukkit.Location;
-import org.bukkit.entity.Player;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
@@ -9,6 +8,9 @@ import java.util.UUID;
 public final class GameData {
 
     private final String name;
+    private final UUID creator;
+    @Nullable
+    private final UUID account;
     private final GameType type;
     private final Location location;
     @Nullable
@@ -19,11 +21,10 @@ public final class GameData {
 
     private final boolean isUpdate;
 
-    @Nullable
-    private final Player creator;
-
-    public GameData(String name, GameType type, Location location, @Nullable String npcName, @Nullable UUID npcUUID, int minPlayers, int maxPlayers, boolean isUpdate, @Nullable Player creator) {
+    public GameData(String name, UUID creator, @Nullable UUID account, GameType type, Location location, @Nullable String npcName, @Nullable UUID npcUUID, int minPlayers, int maxPlayers, boolean isUpdate) {
         this.name = name;
+        this.creator = creator;
+        this.account = account;
         this.type = type;
         this.location = location;
         this.npcName = npcName;
@@ -31,11 +32,19 @@ public final class GameData {
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
         this.isUpdate = isUpdate;
-        this.creator = creator;
     }
 
     public String getName() {
         return name;
+    }
+
+    public UUID getCreator() {
+        return creator;
+    }
+
+    @Nullable
+    public UUID getAccount() {
+        return account;
     }
 
     public GameType getType() {
@@ -65,10 +74,5 @@ public final class GameData {
 
     public boolean isUpdate() {
         return isUpdate;
-    }
-
-    @Nullable
-    public Player getCreator() {
-        return creator;
     }
 }

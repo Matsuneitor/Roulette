@@ -2,12 +2,58 @@ name: Roulette
 version: ${project.version}
 main: me.matsubara.roulette.Roulette
 api-version: 1.13
-authors: [Matsubara]
+authors: [ Matsubara ]
 description: The classic casino game now in Minecraft, no need for texture packs.
-depend: [Citizens, HolographicDisplays, ProtocolLib, Vault]
+depend: [ Citizens, HolographicDisplays, ProtocolLib, Vault ]
+softdepend: [ Multiverse-Core ]
 
 commands:
   roulette:
-    descripcion: main command.
+    description: main command.
     usage: /<command>
-    aliases: [rlt]
+    aliases: [ rlt ]
+
+permissions:
+  roulette.*:
+    description: access to all admin commands.
+    children:
+      roulette.help: true
+      roulette.create: true
+      roulette.delete: true
+      roulette.delete.others: true
+      roulette.purge: true
+      roulette.swap_chair: true
+      roulette.tab_complete: true
+      roulette.reload: true
+      roulette.edit: true
+      roulette.edit.others: true
+  roulette.help:
+    description: allows you to see the available commands.
+    default: op
+  roulette.create:
+    description: allows you to create a game.
+    default: op
+  roulette.delete:
+    description: allows you to delete a game.
+    default: op
+  roulette.delete.others:
+    description: allows you to delete others games.
+    default: op
+  roulette.purge:
+    description: allows you to purge a game.
+    default: op
+  roulette.reload:
+    description: allows you to reload the plugin.
+    default: op
+  roulette.edit:
+    description: allows you to open the editor of a game by right clicking an NPC.
+    default: op
+  roulette.edit.others:
+    description: allows you to open others games editor.
+    default: op
+  roulette.tab_complete:
+    description: allows you to tab complete commands.
+    default: op
+  roulette.swap_chair:
+    description: allows you to swap a chair before the game starts.
+    default: op

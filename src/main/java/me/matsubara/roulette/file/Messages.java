@@ -2,6 +2,7 @@ package me.matsubara.roulette.file;
 
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.util.RUtils;
+import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -15,13 +16,13 @@ import java.util.concurrent.ThreadLocalRandom;
 @SuppressWarnings("ConstantConditions")
 public final class Messages {
 
-    private final Roulette plugin;
+    private static Roulette plugin;
 
     private File file;
     private FileConfiguration configuration;
 
     public Messages(Roulette plugin) {
-        this.plugin = plugin;
+        Messages.plugin = plugin;
         load();
     }
 
@@ -47,71 +48,34 @@ public final class Messages {
         }
     }
 
-    public String getCroupierPrefix() {
-        return RUtils.translate(getConfig().getString("messages.croupier-prefix"));
+    public String getRandomNPCMessage(@Nullable NPC npc, String type) {
+        String npcName = npc.getName().equalsIgnoreCase("") ? null : npc.getName();
+        String message;
+        switch (type) {
+            case "invitations":
+                message = getMessage(Message.INVITATIONS.asList());
+                break;
+            case "bets":
+                message = getMessage(Message.BETS.asList());
+                break;
+            case "no-bets":
+                message = getMessage(Message.NO_BETS.asList());
+                break;
+            default:
+                message = getMessage(Message.WINNER.asList());
+                break;
+        }
+        if (npcName == null || Message.CROUPIER_PREFIX.asString().equalsIgnoreCase("")) return message;
+        return Message.CROUPIER_PREFIX.asString().replace("%croupier%", npcName).concat(message);
     }
 
-    public List<String> getInvitations() {
-        return RUtils.translate(getConfig().getStringList("messages.invitations"));
-    }
-
-    public String getRandomInvitation(@Nullable String npcName) {
-        String invitation = getInvitations().get(ThreadLocalRandom.current().nextInt(getInvitations().size()));
-        if (npcName == null || getCroupierPrefix().equalsIgnoreCase("")) return invitation;
-
-        return getCroupierPrefix().replace("%croupier%", npcName).concat(invitation);
-    }
-
-    public String getFromConsole() {
-        return RUtils.translate(getConfig().getString("messages.from-console"));
-    }
-
-    public String getNotPermission() {
-        return RUtils.translate(getConfig().getString("messages.not-permission"));
-    }
-
-    public String getReload() {
-        return RUtils.translate(getConfig().getString("messages.reload"));
-    }
-
-    public String getCreate(String name) {
-        return RUtils.translate(getConfig().getString("messages.create").replace("%name%", name));
-    }
-
-    public String getDelete(String name) {
-        return RUtils.translate(getConfig().getString("messages.delete").replace("%name%", name));
-    }
-
-    public String getPurge(String name) {
-        return RUtils.translate(getConfig().getString("messages.purge").replace("%name%", name));
-    }
-
-    public String getExist(String name) {
-        return RUtils.translate(getConfig().getString("messages.exist").replace("%name%", name));
-    }
-
-    public String getUnknown(String name) {
-        return RUtils.translate(getConfig().getString("messages.unknown").replace("%name%", name));
-    }
-
-    public String getStarting(int seconds) {
-        return RUtils.translate(getConfig().getString("messages.starting").replace("%seconds%", String.valueOf(seconds)));
-    }
-
-    public String getSelectBet() {
-        return RUtils.translate(getConfig().getString("messages.select-bet"));
-    }
-
-    public String getSorting(int seconds) {
-        return RUtils.translate(getConfig().getString("messages.spinning").replace("%seconds%", String.valueOf(seconds)));
-    }
-
-    public String getOutOfTime() {
-        return RUtils.translate(getConfig().getString("messages.out-of-time"));
+    private String getMessage(List<String> list) {
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        return list.get(random.nextInt(list.size()));
     }
 
     public List<String> getYourBet(String bet, String numbers, String chance) {
-        List<String> list = getConfig().getStringList("messages.your-bet");
+        List<String> list = Message.YOUR_BET.asList();
         list.replaceAll(line -> line
                 .replace("%bet%", bet)
                 .replace("%numbers%", numbers)
@@ -120,25 +84,21 @@ public final class Messages {
     }
 
     public String getJoinMessage(String name, int online, int max) {
-        return RUtils.translate(getConfig().getString("messages.join")
+        return RUtils.translate(Message.JOIN.asString()
                 .replace("%player%", name)
                 .replace("%playing%", String.valueOf(online))
                 .replace("%max%", String.valueOf(max)));
     }
 
     public String getLeaveMessage(String name, int online, int max) {
-        return RUtils.translate(getConfig().getString("messages.leave")
+        return RUtils.translate(Message.LEAVE.asString()
                 .replace("%player%", name)
                 .replace("%playing%", String.valueOf(online))
                 .replace("%max%", String.valueOf(max)));
     }
 
-    public String getNoWinner() {
-        return RUtils.translate(getConfig().getString("messages.no-winner"));
-    }
-
     public List<String> getWinners(int amount, String winners) {
-        List<String> list = getConfig().getStringList("messages.winners");
+        List<String> list = Message.WINNERS.asList();
         list.replaceAll(line -> line
                 .replace("%amount%", String.valueOf(amount))
                 .replace("%winners%", winners));
@@ -146,69 +106,71 @@ public final class Messages {
     }
 
     public String getPrice(String amount, int multiplier) {
-        return RUtils.translate(getConfig().getString("messages.price")
+        return RUtils.translate(Message.PRICE.asString()
                 .replace("%amount%", amount)
                 .replace("%multiplier%", String.valueOf(multiplier)));
     }
 
-    public String getRestart() {
-        return RUtils.translate(getConfig().getString("messages.restart"));
-    }
-
-    public String getAlreadyInGame() {
-        return RUtils.translate(getConfig().getString("messages.already-ingame"));
-    }
-
-    public String getAlreadyStarted() {
-        return RUtils.translate(getConfig().getString("messages.already-started"));
-    }
-
-    public String getMinRequired(String min) {
-        return RUtils.translate(getConfig().getString("messages.min-required")
-                .replace("%money%", min));
-    }
-
-    public String getLeavePlayer() {
-        return RUtils.translate(getConfig().getString("messages.leave-player"));
-    }
-
-    public String getConfirm() {
-        return RUtils.translate(getConfig().getString("messages.confirm"));
-    }
-
-    public String getConfirmLose() {
-        return RUtils.translate(getConfig().getString("messages.confirm-lose"));
-    }
-
-    public String getSelected(String amount) {
-        return RUtils.translate(getConfig().getString("messages.selected-amount").replace("%money%", amount));
-    }
-
-    public String getControl() {
-        return RUtils.translate(getConfig().getString("messages.control"));
-    }
-
-    public String getSpinningStart() {
-        return RUtils.translate(getConfig().getString("messages.spinning-start"));
-    }
-
-    public String getCreating() {
-        return RUtils.translate(getConfig().getString("messages.creating"));
-    }
-
-    public String getWait() {
-        return RUtils.translate(getConfig().getString("messages.wait"));
-    }
-
-    public String getCancelled(String game) {
-        return RUtils.translate(getConfig().getString("messages.cancelled").replace("%game%", game));
-    }
-
-    public List<String> getHelp() {
-        return RUtils.translate(getConfig().getStringList("messages.help"));
-    }
-
     public FileConfiguration getConfig() {
         return configuration;
+    }
+
+    public enum Message {
+        CROUPIER_PREFIX("messages.npc.croupier-prefix"),
+        INVITATIONS("messages.npc.invitations"),
+        BETS("messages.npc.bets"),
+        NO_BETS("messages.npc.no-bets"),
+        WINNER("messages.npc.winner"),
+        FROM_CONSOLE("messages.plugin.from-console"),
+        NOT_PERMISSION("messages.plugin.not-permission"),
+        RELOAD("messages.plugin.reload"),
+        CREATE("messages.commands.create"),
+        DELETE("messages.commands.delete"),
+        PURGE("messages.commands.purge"),
+        EXIST("messages.commands.exist"),
+        UNKNOWN("messages.commands.unknown"),
+        CANCELLED("messages.commands.cancelled"),
+        CREATING("messages.commands.creating"),
+        WAIT("messages.commands.wait"),
+        SINTAX("messages.commands.sintax"),
+        STARTING("messages.states.starting"),
+        SELECT_BET("messages.states.select-bet"),
+        SPINNING("messages.states.spinning"),
+        OUT_OF_TIME("messages.states.out-of-time"),
+        YOUR_BET("messages.states.your-bet"),
+        SPINNING_START("messages.states.spinning-start"),
+        JOIN("messages.states.join"),
+        LEAVE("messages.states.leave"),
+        NO_WINNER("messages.states.no-winner"),
+        WINNERS("messages.states.winners"),
+        PRICE("messages.states.price"),
+        RESTART("messages.states.restart"),
+        LEAVE_PLAYER("messages.states.leave-player"),
+        ALREADY_INGAME("messages.others.already-ingame"),
+        ALREADY_STARTED("messages.others.already-started"),
+        MIN_REQUIRED("messages.others.min-required"),
+        CONFIRM("messages.others.confirm"),
+        CONFIRM_LOSE("messages.others.confirm-lose"),
+        SELECTED_AMOUNT("messages.others.selected-amount"),
+        CONTROL("messages.others.control"),
+        ACCOUNT("messages.others.account"),
+        NO_ACCOUNT("messages.others.no-account"),
+        UNKNOWN_ACCOUNT("messages.others.unknown-account"),
+        RECEIVED("messages.others.received"),
+        HELP("messages.help");
+
+        private final String path;
+
+        Message(String path) {
+            this.path = path;
+        }
+
+        public String asString() {
+            return RUtils.translate(plugin.getMessages().getConfig().getString(path));
+        }
+
+        public List<String> asList() {
+            return RUtils.translate(plugin.getMessages().getConfig().getStringList(path));
+        }
     }
 }

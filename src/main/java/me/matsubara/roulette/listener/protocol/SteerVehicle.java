@@ -6,6 +6,8 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.StructureModifier;
 import me.matsubara.roulette.Roulette;
+import me.matsubara.roulette.file.Configuration;
+import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.util.RUtils;
 import org.bukkit.NamespacedKey;
@@ -91,20 +93,20 @@ public final class SteerVehicle extends PacketAdapter {
 
             // Send confirm message.
             if (!game.canLoseMoney()) {
-                RUtils.handleMessage(player, plugin.getMessages().getConfirm());
+                RUtils.handleMessage(player, Messages.Message.CONFIRM.asString());
             } else {
-                RUtils.handleMessage(player, plugin.getMessages().getConfirmLose());
+                RUtils.handleMessage(player, Messages.Message.CONFIRM_LOSE.asString());
             }
 
             // Add to cooldown and cancel event.
-            dismountCooldown.put(player.getUniqueId(), System.currentTimeMillis() + plugin.getConfiguration().getLeaveConfirmInterval());
+            dismountCooldown.put(player.getUniqueId(), System.currentTimeMillis() + Configuration.Config.LEAVE_CONFIRM_INTERVAL.asLong());
             event.setCancelled(true);
         }
-        steerCooldown.put(player.getUniqueId(), System.currentTimeMillis() + plugin.getConfiguration().getMoveChipInterval());
+        steerCooldown.put(player.getUniqueId(), System.currentTimeMillis() + Configuration.Config.MOVE_CHIP_INTERVAL.asLong());
     }
 
     private boolean swapChair(Player player, Game game) {
-        return (game.getState().isWaiting() || game.getState().isCountdown()) && (plugin.getConfiguration().swapChair() || player.hasPermission("roulette.swap_chair"));
+        return (game.getState().isWaiting() || game.getState().isCountdown()) && (Configuration.Config.SWAP_CHAIR.asBoolean() || player.hasPermission("roulette.swap_chair"));
     }
 
     private void execute(Runnable runnable) {

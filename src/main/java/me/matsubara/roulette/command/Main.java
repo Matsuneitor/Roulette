@@ -1,6 +1,8 @@
 package me.matsubara.roulette.command;
 
 import me.matsubara.roulette.Roulette;
+import me.matsubara.roulette.file.Configuration;
+import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.game.GameData;
 import me.matsubara.roulette.game.GameType;
@@ -38,37 +40,43 @@ public final class Main implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
-            RUtils.handleMessage(sender, plugin.getMessages().getFromConsole());
-            return true;
-        }
-
-        if (!sender.hasPermission("roulette.admin")) {
-            RUtils.handleMessage(sender, plugin.getMessages().getNotPermission());
+            RUtils.handleMessage(sender, Messages.Message.FROM_CONSOLE.asString());
             return true;
         }
 
         Player player = (Player) sender;
 
-        if (args.length == 0 || args.length > 6) {
-            sendHelp(player);
+        if (args.length == 0) {
+            if (!hasPermission(player, "roulette.help")) return true;
+            Messages.Message.HELP.asList().forEach(line -> player.sendMessage(RUtils.translate(line)));
+            return true;
+        }
+
+        if (args.length > 6) {
+            if (!hasPermission(player, "roulette.help")) return true;
+            RUtils.handleMessage(player, Messages.Message.SINTAX.asString());
             return true;
         }
 
         if (args.length == 1) {
             if (!args[0].equalsIgnoreCase("reload")) {
-                sendHelp(player);
+                if (!hasPermission(player, "roulette.help")) return true;
+                RUtils.handleMessage(player, Messages.Message.SINTAX.asString());
                 return true;
             }
+
+            if (!hasPermission(player, "roulette.reload")) return true;
+
             plugin.getLogger().info("Reloading " + plugin.getDescription().getFullName());
 
-            int temp = plugin.getConfiguration().getLookDistance();
+            int temp = Configuration.Config.LOOK_DISTANCE.asInt();
 
             plugin.reloadConfig();
             plugin.getChips().reloadConfig();
-            plugin.getGames().reloadConfig(player);
+            plugin.getGames().reloadConfig();
             plugin.getMessages().reloadConfig();
 
-            int current = plugin.getConfiguration().getLookDistance();
+            int current = Configuration.Config.LOOK_DISTANCE.asInt();
 
             // If the look distance has changed, we update it to every game.
             if (temp != current) {
@@ -78,26 +86,45 @@ public final class Main implements CommandExecutor, TabCompleter {
                 }
             }
 
-            RUtils.handleMessage(player, plugin.getMessages().getReload());
+            RUtils.handleMessage(player, Messages.Message.RELOAD.asString());
             return true;
         }
 
         if (args.length == 2) {
             switch (args[0].toLowerCase()) {
                 case "delete": {
+                    if (!hasPermission(player, "roulette.delete")) return true;
                     Game game = plugin.getGames().getGameByName(args[1]);
-                    if (game != null) {
-                        game.delete(true, false);
-                        RUtils.handleMessage(player, plugin.getMessages().getDelete(args[1]));
-                    } else {
-                        RUtils.handleMessage(player, plugin.getMessages().getUnknown(args[1]));
+
+                    if (game == null) {
+                        RUtils.handleMessage(player, Messages.Message.UNKNOWN.asString().replace("%name%", args[1]));
+                        return true;
                     }
+
+                    if (!game.getData().getCreator().equals(player.getUniqueId()) && !hasPermission(player, "roulette.delete.others")) {
+                        return true;
+                    }
+
+                    if (!game.isDone()) {
+                        plugin.getGames().cancelGameCreation(game, null);
+                        return true;
+                    }
+
+                    game.delete(true, false, false);
+                    RUtils.handleMessage(player, Messages.Message.DELETE.asString().replace("%name%", game.getName()));
                     break;
                 }
                 case "purge": {
+                    if (!hasPermission(player, "roulette.purge")) return true;
+
                     Game game = plugin.getGames().getGameByName(args[1]);
-                    if (game != null) game.delete(true, false);
-                    else {
+                    if (game != null) {
+                        if (!game.isDone()) {
+                            plugin.getGames().cancelGameCreation(game, null);
+                            return true;
+                        }
+                        game.delete(true, false, false);
+                    } else {
                         for (Entity entity : player.getWorld().getEntities()) {
                             PersistentDataContainer container = entity.getPersistentDataContainer();
 
@@ -108,28 +135,34 @@ public final class Main implements CommandExecutor, TabCompleter {
                             entity.remove();
                         }
                     }
-                    RUtils.handleMessage(player, plugin.getMessages().getPurge(args[1]));
+                    RUtils.handleMessage(player, Messages.Message.PURGE.asString().replace("%name%", args[1]));
                     break;
                 }
                 default:
-                    sendHelp(player);
+                    if (!hasPermission(player, "roulette.help")) return true;
+                    RUtils.handleMessage(player, Messages.Message.SINTAX.asString());
                     break;
             }
             return true;
         }
 
+        if (!player.hasPermission("roulette.create")) {
+            RUtils.handleMessage(player, Messages.Message.NOT_PERMISSION.asString());
+            return true;
+        }
+
         if (plugin.getGames().getGameByName(args[1]) != null) {
-            RUtils.handleMessage(player, plugin.getMessages().getExist(args[1]));
+            RUtils.handleMessage(player, Messages.Message.EXIST.asString().replace("%name%", args[1]));
             return true;
         }
 
         if (Game.CREATING.contains(player.getUniqueId())) {
-            RUtils.handleMessage(player, plugin.getMessages().getCreating());
+            RUtils.handleMessage(player, Messages.Message.CREATING.asString());
             return true;
         }
 
         if (plugin.getGames().isRunning() && plugin.getGames().isUpdate()) {
-            RUtils.handleMessage(player, plugin.getMessages().getWait());
+            RUtils.handleMessage(player, Messages.Message.WAIT.asString());
             return true;
         }
 
@@ -143,7 +176,7 @@ public final class Main implements CommandExecutor, TabCompleter {
             min = Integer.parseInt(args[4]);
             max = Integer.parseInt(args[5]);
         } catch (IllegalArgumentException exception) {
-            sendHelp(player);
+            RUtils.handleMessage(player, Messages.Message.SINTAX.asString());
             return true;
         } catch (IndexOutOfBoundsException exception) {
             if (type == null) type = GameType.AMERICAN;
@@ -153,16 +186,12 @@ public final class Main implements CommandExecutor, TabCompleter {
 
         Location location = getCorrectLocation(player);
 
-        GameData data = new GameData(args[1], type, location, npc, null, min, max, false, player);
+        GameData data = new GameData(args[1], player.getUniqueId(), null, type, location, npc, null, min, max, false);
         plugin.getGames().getGameDatas().add(data);
 
         // If create next game is running, no need to call the method again.
         if (!plugin.getGames().isRunning()) plugin.getGames().createNextName();
         return true;
-    }
-
-    private void sendHelp(Player player) {
-        plugin.getMessages().getHelp().forEach(line -> player.sendMessage(RUtils.translate(line)));
     }
 
     private Location getCorrectLocation(Player player) {
@@ -173,11 +202,17 @@ public final class Main implements CommandExecutor, TabCompleter {
         return location;
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    public boolean hasPermission(Player player, String permission) {
+        if (player.hasPermission(permission)) return true;
+        RUtils.handleMessage(player, Messages.Message.NOT_PERMISSION.asString());
+        return false;
+    }
+
     @SuppressWarnings({"NullableProblems"})
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("roulette.admin")) return null;
-
+        if (!sender.hasPermission("roulette.tab_complete")) return null;
         switch (args.length) {
             case 1:
                 return getCompletions(args[0], "create", "delete", "purge", "reload");

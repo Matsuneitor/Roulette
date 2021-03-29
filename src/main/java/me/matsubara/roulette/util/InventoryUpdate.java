@@ -21,7 +21,7 @@
  */
 package me.matsubara.roulette.util;
 
-import com.cryptomorin.xseries.ReflectionUtils;
+import me.matsubara.roulette.util.xseries.ReflectionUtils;
 import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;

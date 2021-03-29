@@ -1,6 +1,7 @@
 package me.matsubara.roulette.listener;
 
 import me.matsubara.roulette.Roulette;
+import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.util.RUtils;
 import org.bukkit.NamespacedKey;
@@ -52,7 +53,7 @@ public final class EntityDismount implements Listener {
 
             // The player leave the game (dismount / change gamemode to spectator), remove him.
             if (!game.getState().isEnding()) {
-                RUtils.handleMessage(player, plugin.getMessages().getLeavePlayer());
+                RUtils.handleMessage(player, Messages.Message.LEAVE_PLAYER.asString());
             }
             game.removePlayer(player, false);
         });

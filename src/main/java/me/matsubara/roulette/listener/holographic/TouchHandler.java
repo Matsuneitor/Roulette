@@ -1,6 +1,7 @@
 package me.matsubara.roulette.listener.holographic;
 
 import me.matsubara.roulette.Roulette;
+import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.util.RUtils;
 import org.bukkit.entity.Player;
@@ -19,13 +20,13 @@ public final class TouchHandler implements com.gmail.filoghost.holographicdispla
     public void onTouch(Player player) {
         // If the player is already in game, return. (Shouldn't happen)
         if (game.inGame(player)) {
-            RUtils.handleMessage(player, plugin.getMessages().getAlreadyInGame());
+            RUtils.handleMessage(player, Messages.Message.ALREADY_INGAME.asString());
             return;
         }
 
         // If the game already started, return. (Shouldn't happen)
         if (!game.getState().isWaiting() && !game.getState().isCountdown()) {
-            RUtils.handleMessage(player, plugin.getMessages().getAlreadyStarted());
+            RUtils.handleMessage(player, Messages.Message.ALREADY_STARTED.asString());
             return;
         }
 
@@ -34,7 +35,7 @@ public final class TouchHandler implements com.gmail.filoghost.holographicdispla
 
         // If the player doesn't have the minimum amount of money required, return.
         if (!plugin.getEconomy().has(player, minAmount)) {
-            RUtils.handleMessage(player, plugin.getMessages().getMinRequired(plugin.getEconomy().format(minAmount)));
+            RUtils.handleMessage(player, Messages.Message.MIN_REQUIRED.asString().replace("%money%", String.valueOf(minAmount)));
             return;
         }
 
