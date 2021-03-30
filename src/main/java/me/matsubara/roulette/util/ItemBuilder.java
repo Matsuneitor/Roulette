@@ -24,6 +24,7 @@ import java.util.Set;
 public final class ItemBuilder implements Cloneable {
 
     private final ItemStack item;
+    private final static PersistentDataType<Object, Object>[] DATA_TYPES = getDataTypes();
 
     private JavaPlugin plugin;
 
@@ -140,8 +141,6 @@ public final class ItemBuilder implements Cloneable {
         return this;
     }
 
-    private static final PersistentDataType<Object, Object>[] dataTypes = getDataTypes();
-
     @SuppressWarnings("unchecked")
     private static PersistentDataType<Object, Object>[] getDataTypes() {
         Field[] fields = PersistentDataType.class.getDeclaredFields();
@@ -158,8 +157,8 @@ public final class ItemBuilder implements Cloneable {
         return (PersistentDataType<Object, Object>[]) results.toArray(new PersistentDataType<?, ?>[0]);
     }
 
-    public PersistentDataType<Object, Object> getDataType(Class<?> clazz) {
-        for (PersistentDataType<Object, Object> dataType : dataTypes) {
+    private PersistentDataType<Object, Object> getDataType(Class<?> clazz) {
+        for (PersistentDataType<Object, Object> dataType : DATA_TYPES) {
             if (dataType.getPrimitiveType().equals(clazz)) return dataType;
         }
         return null;

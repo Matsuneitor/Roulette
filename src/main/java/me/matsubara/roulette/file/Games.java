@@ -1,7 +1,5 @@
 package me.matsubara.roulette.file;
 
-import com.onarandombox.MultiverseCore.MultiverseCore;
-import com.onarandombox.MultiverseCore.api.MVWorldManager;
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.game.GameData;
@@ -18,7 +16,6 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -45,37 +42,7 @@ public final class Games {
         this.gameDatas = new ArrayList<>();
         this.games = new HashSet<>();
         this.isRunning = false;
-        if (!hasMultiverse()) load();
-    }
-
-    private boolean hasMultiverse() {
-        // If the server is using MC, then we'll wait until every world has been loaded.
-        if (!Bukkit.getPluginManager().isPluginEnabled("Multiverse-Core")) return false;
-
-        MultiverseCore core = (MultiverseCore) Bukkit.getPluginManager().getPlugin("Multiverse-Core");
-        if (core == null) return false;
-
-        MVWorldManager manager = core.getMVWorldManager();
-
-        // If all worlds has been loaded, then load every game.
-        if (manager.getUnloadedWorlds().isEmpty()) {
-            load();
-            return true;
-        }
-
-        logger.info("Multiverse-Core has been detected, waiting for all worlds to be loaded...");
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (manager.getUnloadedWorlds().isEmpty()) {
-                    logger.info("All the worlds have been loaded, ready to load the games!");
-                    load();
-                    cancel();
-                }
-            }
-        }.runTaskTimer(plugin, 0L, 20L);
-        return true;
+        load();
     }
 
     private void load() {

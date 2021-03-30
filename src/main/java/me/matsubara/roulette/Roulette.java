@@ -5,6 +5,9 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.ListenerPriority;
 import com.gmail.filoghost.holographicdisplays.api.Hologram;
 import com.gmail.filoghost.holographicdisplays.api.HologramsAPI;
+import com.onarandombox.MultiverseCore.MultiverseCore;
+import com.onarandombox.MultiverseCore.api.MVWorldManager;
+import com.onarandombox.MultiverseCore.api.MultiverseWorld;
 import me.matsubara.roulette.command.Main;
 import me.matsubara.roulette.file.Chips;
 import me.matsubara.roulette.file.Configuration;
@@ -22,13 +25,20 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.trait.TraitInfo;
 import net.md_5.bungee.api.ChatColor;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Entity;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public final class Roulette extends JavaPlugin {
 
@@ -59,6 +69,16 @@ public final class Roulette extends JavaPlugin {
             getLogger().severe("You need to install an economy provider (like EssentialsX, CMI, etc...) to be able to use this plugin, disabling...");
             setEnabled(false);
             return;
+        }
+
+        // Remove entities from bukkit worlds.
+        removeEntities(getServer().getWorlds());
+
+        // Remove entities from MC worlds, if present.
+        MultiverseCore core = (MultiverseCore) Bukkit.getPluginManager().getPlugin("Multiverse-Core");
+        if (core != null) {
+            MVWorldManager manager = core.getMVWorldManager();
+            removeEntities(manager.getMVWorlds().stream().map(MultiverseWorld::getCBWorld).collect(Collectors.toList()));
         }
 
         // Delete every hologram and placeholder to prevent duplicates.
@@ -124,13 +144,20 @@ public final class Roulette extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Delete every game from the server, but not from games.yml; mainly for /reload.
+        // Remove all games parts from the game except the NPC, for /reload.
         Iterator<Game> iterator = games.getGamesSet().iterator();
         while (iterator.hasNext()) {
             Game current = iterator.next();
             current.delete(false, true, true);
             iterator.remove();
         }
+    }
+
+    private void removeEntities(List<World> worlds) {
+        NamespacedKey key = new NamespacedKey(this, "fromRoulette");
+        worlds.forEach(world -> world.getEntities().stream()
+                .filter(entity -> entity.getPersistentDataContainer().has(key, PersistentDataType.STRING))
+                .forEach(Entity::remove));
     }
 
     private boolean versionAllowed() {

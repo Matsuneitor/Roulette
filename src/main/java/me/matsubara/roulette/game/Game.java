@@ -293,7 +293,7 @@ public final class Game {
         stand.setCustomNameVisible(false);
         stand.setCollidable(false);
         stand.setInvulnerable(true);
-        stand.setPersistent(false);
+        stand.setPersistent(true);
         stand.setRemoveWhenFarAway(false);
         stand.setSilent(true);
         stand.setVisible(false);
