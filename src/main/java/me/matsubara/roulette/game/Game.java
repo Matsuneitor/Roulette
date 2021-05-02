@@ -1,8 +1,8 @@
 package me.matsubara.roulette.game;
 
-import com.gmail.filoghost.holographicdisplays.api.Hologram;
+import com.cryptomorin.xseries.XMaterial;
+import com.cryptomorin.xseries.messages.ActionBar;
 import com.gmail.filoghost.holographicdisplays.api.HologramsAPI;
-import com.gmail.filoghost.holographicdisplays.api.line.TextLine;
 import com.google.common.base.Strings;
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.data.Chip;
@@ -10,24 +10,24 @@ import me.matsubara.roulette.data.Part;
 import me.matsubara.roulette.data.Slot;
 import me.matsubara.roulette.file.Configuration;
 import me.matsubara.roulette.file.Messages;
-import me.matsubara.roulette.listener.holographic.TouchHandler;
+import me.matsubara.roulette.file.winner.Winner;
+import me.matsubara.roulette.hologram.Hologram;
+import me.matsubara.roulette.npc.NPC;
 import me.matsubara.roulette.runnable.Selecting;
 import me.matsubara.roulette.runnable.Sorting;
 import me.matsubara.roulette.runnable.Starting;
-import me.matsubara.roulette.trait.LookCloseModified;
 import me.matsubara.roulette.util.RUtils;
-import me.matsubara.roulette.util.xseries.messages.ActionBar;
-import net.citizensnpcs.api.CitizensAPI;
-import net.citizensnpcs.api.npc.NPC;
-import net.citizensnpcs.api.trait.trait.Equipment;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.Validate;
 import org.bukkit.*;
 import org.bukkit.block.BlockFace;
-import org.bukkit.entity.*;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Firework;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.FireworkMeta;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -44,7 +44,8 @@ public final class Game {
     private final Roulette plugin;
 
     // Static variables, needed for all games.
-    public final static String S_PLAYING = "{%s-playing}", S_BET = "{%s-bet}";
+    public final static String HD_PLAYING = "{%s-playing}", HD_BET = "{%s-bet}", HD_WINNER = "{%s-winner}";
+    public final static String CMI_PLAYING = "%%roulette_count_%s%%", CMI_BET = "%%roulette_selected%%", CMI_WINNER = "%%roulette_winner_%s%%";
     public final static Set<UUID> CREATING = new HashSet<>();
     public final static int[] TIMESTAMP = {1, 25, 50, 75, 100};
 
@@ -56,9 +57,14 @@ public final class Game {
     // Creation properties.
     private boolean isDone;
 
+    private boolean betAll;
+    private int startTime;
+
     // Required sets.
     private final Set<UUID> players;
     private final Set<String> placeholders;
+
+    private final Set<Slot> disabled;
 
     // Required maps, model and mechanic related.
     private final Map<Part, ArmorStand> parts;
@@ -104,8 +110,21 @@ public final class Game {
 
         this.isDone = false;
 
+        this.betAll = data.isBetAll();
+        setStartTime(data.getStartTime());
+
         this.players = new HashSet<>();
         this.placeholders = new HashSet<>();
+
+        this.disabled = new HashSet<>();
+
+        for (String slot : Configuration.Config.DISABLED_SLOTS.asList()) {
+            try {
+                this.disabled.add(Slot.valueOf(slot));
+            } catch (IllegalArgumentException exception) {
+                exception.printStackTrace();
+            }
+        }
 
         this.parts = new HashMap<>();
         this.slots = new HashMap<>();
@@ -120,17 +139,30 @@ public final class Game {
         this.npcName = data.getNPCName();
         this.npcUUID = data.getNPCUUID();
 
-        String placeholder = String.format(S_PLAYING, name);
-        HologramsAPI.registerPlaceholder(plugin, placeholder, 1.0d, () -> String.valueOf(players.size()));
+        String joinName = Roulette.USE_HOLOGRAPHIC ? null : "join-hologram-" + name;
+        Location join = location.clone().add(RUtils.offsetVector(new Vector(1.78125d, 3.5d, -0.59375d), location.getYaw(), location.getPitch()));
+        this.joinHologram = RUtils.createHologram(this, joinName, join, true);
+
+        // Register the placeholder for the join hologram (if using HD).
+        String placeholder = String.format(HD_PLAYING, name);
+        if (Roulette.USE_HOLOGRAPHIC) {
+            HologramsAPI.registerPlaceholder(plugin, placeholder, 0.15d, () -> String.valueOf(players.size()));
+        }
         placeholders.add(placeholder);
 
-        Location join = location.clone().add(RUtils.offsetVector(new Vector(1.78125d, 3.5d, -0.59375d), location.getYaw(), location.getPitch()));
-        this.joinHologram = HologramsAPI.createHologram(plugin, join);
-        this.joinHologram.setAllowPlaceholders(true);
+        // Register the placeholder for the spin hologram (if using HD).
+        placeholder = String.format(HD_WINNER, name);
+        if (Roulette.USE_HOLOGRAPHIC) {
+            HologramsAPI.registerPlaceholder(plugin, placeholder, 0.15d, () -> {
+                if (winner == null) return "";
+                return RUtils.getSlotName(winner);
+            });
+        }
+        placeholders.add(placeholder);
 
+        String spinName = Roulette.USE_HOLOGRAPHIC ? null : "spin-hologram-" + name;
         Location spin = location.clone().add(RUtils.offsetVector(new Vector(-0.88d, 3.235d, -0.875d), location.getYaw(), location.getPitch()));
-        this.spinHologram = HologramsAPI.createHologram(plugin, spin);
-        this.spinHologram.setAllowPlaceholders(true);
+        this.spinHologram = RUtils.createHologram(this, spinName, spin);
 
         // If the type is changed wrong from games.yml, set AMERICAN by default.
         this.type = (data.getType() == null) ? GameType.AMERICAN : data.getType();
@@ -160,11 +192,12 @@ public final class Game {
     private void createGamePart(int index, @Nullable Player creator) {
         if (index == 0) plugin.getGames().saveGame(this);
 
-        int size = Part.getSize(type.isEuropean());
+        int size = Part.getValues(this).length;
+        // int size = Part.getSize(type.isEuropean());
 
         if (index == size - 1) {
             // Join hologram will appear when the whole table is ready.
-            setupJoinHologram(String.format(S_PLAYING, name));
+            setupJoinHologram(String.format(Roulette.USE_HOLOGRAPHIC ? HD_PLAYING : CMI_PLAYING, name));
 
             // Send created message to the crator.
             if (creator != null && creator.isOnline()) {
@@ -189,10 +222,16 @@ public final class Game {
             }
         }
 
-        Part part = Part.getValues(type.isEuropean())[index];
+        Part part = Part.getValues(this)[index];
 
         Vector offset = new Vector(part.getOffsetX(), part.getOffsetY(), part.getOffsetZ());
+
+        if (part == Part.NPC_TARGET && !Roulette.USE_CITIZENS) offset = offset.setY(1.0d);
+
         Location newLocation = location.clone().add(RUtils.offsetVector(offset, location.getYaw(), location.getPitch()));
+
+        // If the chunk of the location isn't loaded, load.
+        if (!newLocation.getChunk().isLoaded()) newLocation.getChunk().load();
 
         // Set rotation of the chair, so the player looks to the front.
         if (isTopChair(part)) newLocation.setDirection(RUtils.getDirection(faces[chairs.size()]));
@@ -202,7 +241,9 @@ public final class Game {
 
         Validate.notNull(location.getWorld(), "World can't be null.");
 
+        //ArmorStand stand = location.getWorld().spawn(newLocation, ArmorStand.class, this::modifyArmorStand);
         ArmorStand stand = location.getWorld().spawn(newLocation, ArmorStand.class, this::modifyArmorStand);
+
         if (stand.getEquipment() == null) return;
 
         boolean isChair = false, isSlot = false;
@@ -212,8 +253,8 @@ public final class Game {
             stand.setVisible(part.isSpinner());
             stand.setBasePlate(!part.isSpinner());
         } else if (part.isMaterial()) {
-            stand.getEquipment().setHelmet(new ItemStack(part.getMaterial()));
-            switch (part.getMaterial()) {
+            stand.getEquipment().setHelmet(part.getXMaterial().parseItem());
+            switch (part.getXMaterial()) {
                 case END_ROD:
                     if (!part.isBall()) break;
                     stand.getEquipment().setHelmet(null);
@@ -252,15 +293,11 @@ public final class Game {
 
         PersistentDataContainer container = stand.getPersistentDataContainer();
 
-        NamespacedKey key = new NamespacedKey(plugin, "fromRoulette");
-        container.set(key, PersistentDataType.STRING, name);
-
         if (isChair) {
-            key = new NamespacedKey(plugin, "fromRouletteChair");
-            container.set(key, PersistentDataType.INTEGER, chairs.size());
+            container.set(new NamespacedKey(plugin, "fromRouletteChair"), PersistentDataType.INTEGER, chairs.size());
             chairs.add(stand);
         } else if (isSlot) {
-            slots.put(Slot.getValues(type.isEuropean())[slots.size()], stand);
+            slots.put(Slot.getValues(this)[slots.size()], stand);
         } else {
             parts.put(part, stand);
         }
@@ -288,12 +325,16 @@ public final class Game {
     }
 
     private void modifyArmorStand(ArmorStand stand) {
+        // Save our identity key to the armor stands when being spawned, to prevent clear lag deleting them.
+        PersistentDataContainer container = stand.getPersistentDataContainer();
+        container.set(new NamespacedKey(plugin, "fromRoulette"), PersistentDataType.STRING, name);
+
         stand.setAI(false);
         stand.setCustomName("roulette-armor-stand");
         stand.setCustomNameVisible(false);
         stand.setCollidable(false);
         stand.setInvulnerable(true);
-        stand.setPersistent(true);
+        if (RUtils.getMajorVersion() != 12) stand.setPersistent(true);
         stand.setRemoveWhenFarAway(false);
         stand.setSilent(true);
         stand.setVisible(false);
@@ -306,8 +347,13 @@ public final class Game {
         // If UUID provided is null, then the NPC doesn't exist; if so, we create one, otherwise, we load it.
         npcName = (npcName == null) ? "" : RUtils.translate(npcName);
 
-        if (npcUUID != null) npc = CitizensAPI.getNPCRegistry().getByUniqueId(npcUUID);
-        if (npc == null) npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, npcName);
+        boolean citizens = Roulette.USE_CITIZENS;
+
+        if (citizens) {
+            if (npcUUID != null) npc = RUtils.getNPCByUniqueId(npcUUID, this);
+        }
+
+        if (npc == null) npc = RUtils.createNPC(citizens, this, npcName);
 
         npcName = npc.getFullName();
         npcUUID = npc.getUniqueId();
@@ -317,22 +363,19 @@ public final class Game {
         where.setDirection(RUtils.getDirection(faces[0]));
 
         // Spawn the NPC if isn't spawned.
-        if (!npc.isSpawned()) npc.spawn(where);
+        npc.spawn(where);
 
         // Set item in hand.
-        npc.getOrAddTrait(Equipment.class).set(Equipment.EquipmentSlot.HAND, plugin.getConfiguration().getBall());
+        npc.setItemInHand(plugin.getConfiguration().getBall());
 
         // Set NPC look around for players.
         if (Configuration.Config.NPC_LOOK_AROUND.asBoolean()) {
-            npc.getOrAddTrait(LookCloseModified.class).setGame(this);
-            npc.getOrAddTrait(LookCloseModified.class).setRealisticLooking(true);
-            npc.getOrAddTrait(LookCloseModified.class).setRange(Configuration.Config.LOOK_DISTANCE.asInt());
-            npc.getOrAddTrait(LookCloseModified.class).lookClose(true);
+            npc.lookAround(npc, true);
         }
 
         // Hide NPC name if no name was supplied.
         if (npcName == null || npcName.equalsIgnoreCase("")) {
-            npc.data().setPersistent(NPC.NAMEPLATE_VISIBLE_METADATA, false);
+            npc.hideName();
         }
     }
 
@@ -344,25 +387,27 @@ public final class Game {
     }
 
     public void setupJoinHologram(String placeholder) {
-        if (joinHologram == null || joinHologram.isDeleted()) return;
+        if (joinHologram.isDeleted()) return;
         if (joinHologram.size() > 0) joinHologram.clearLines();
 
         String type = this.type.isEuropean() ? Configuration.Config.TYPE_EUROPEAN.asString() : Configuration.Config.TYPE_AMERICAN.asString();
 
         List<String> lines = Configuration.Config.JOIN_HOLOGRAM.asList();
         for (String line : lines) {
-            TextLine text = joinHologram.appendTextLine(line
+
+            String text = line
                     .replaceAll("%name%", name)
                     .replaceAll("%playing%", placeholder)
                     .replaceAll("%max%", String.valueOf(maxPlayers))
-                    .replaceAll("%type%", type));
+                    .replaceAll("%type%", type);
 
-            if (lines.indexOf(line) == (lines.size() - 1)) text.setTouchHandler(new TouchHandler(plugin, this));
+            boolean touchable = lines.indexOf(line) == (lines.size() - 1);
+            joinHologram.addLine(text, touchable);
         }
     }
 
     public boolean isTopChair(Part part) {
-        return part.getMaterial() != null && part.getMaterial() == Material.SPRUCE_SLAB && part.isChair();
+        return part.getXMaterial() != null && part.getXMaterial() == XMaterial.SPRUCE_SLAB && part.isChair();
     }
 
     public boolean spaceAvailable() {
@@ -374,7 +419,11 @@ public final class Game {
     }
 
     public boolean inGame(Player player) {
-        return players.contains(player.getUniqueId());
+        // Somehow gives StackOverFlowError with HashSet#contains().
+        for (UUID uuid : players) {
+            if (uuid.equals(player.getUniqueId())) return true;
+        }
+        return false;
     }
 
     public int size() {
@@ -385,7 +434,7 @@ public final class Game {
         if (!spaceAvailable()) return;
         if (inGame(player)) return;
 
-        joinHologram.getVisibilityManager().hideTo(player);
+        joinHologram.hideTo(player);
         players.add(player.getUniqueId());
         nextChair(player);
 
@@ -396,7 +445,7 @@ public final class Game {
         if (!inGame(player)) return;
 
         if (isRestart || players.size() == 1 || (state.isWaiting() || (state.isCountdown() && players.size() < minPlayers))) {
-            joinHologram.getVisibilityManager().showTo(player);
+            joinHologram.showTo(player);
         }
 
         // Hide player selected chip.
@@ -439,8 +488,11 @@ public final class Game {
 
     private void removePlayerHologram(Player player) {
         if (!holograms.containsKey(player.getUniqueId())) return;
-        String placeholder = String.format(S_BET, player.getName());
-        HologramsAPI.unregisterPlaceholder(plugin, placeholder);
+
+        // Unregister the placeholder for HD.
+        String placeholder = String.format(HD_BET, player.getName());
+        if (Roulette.USE_HOLOGRAPHIC) HologramsAPI.unregisterPlaceholder(plugin, placeholder);
+
         holograms.get(player.getUniqueId()).delete();
         holograms.remove(player.getUniqueId());
     }
@@ -553,10 +605,9 @@ public final class Game {
     }
 
     public void restart() {
-        // TODO: Testing...
         if (state == GameState.WAITING && players.isEmpty()) return;
         if (npc != null && (state.isSpinning() || state.isEnding())) {
-            npc.getOrAddTrait(Equipment.class).set(Equipment.EquipmentSlot.HAND, plugin.getConfiguration().getBall());
+            npc.setItemInHand(plugin.getConfiguration().getBall());
         }
 
         if (parts.get(Part.BALL) != null) {
@@ -579,7 +630,7 @@ public final class Game {
         if (spinHologram.size() > 0) spinHologram.clearLines();
 
         if (npc != null && Configuration.Config.NPC_LOOK_AROUND.asBoolean()) {
-            npc.getOrAddTrait(LookCloseModified.class).lookClose(true);
+            npc.lookAround(npc, true);
         }
 
         // Set the game state to waiting after 1 second, to prevent unwanted messages.
@@ -627,6 +678,7 @@ public final class Game {
             }
         }
 
+        // Send money to the account of the game.
         if (account != null) {
             double total = 0;
 
@@ -654,14 +706,15 @@ public final class Game {
         }
 
         if (winners.isEmpty()) {
-            broadcast(Messages.Message.NO_WINNER.asString());
+            broadcast(Messages.Message.NO_WINNER.asString().replace("%winner%", RUtils.getSlotName(winner)));
             broadcast(Messages.Message.RESTART.asString());
-            plugin.getServer().getScheduler().runTaskLater(plugin, this::restart, Configuration.Config.RESTART_TIME.asInt() * 20L);
+            restartRunnable(true);
             return;
         }
 
         String[] names = winners.stream().map(Player::getName).toArray(String[]::new);
 
+        npc.playAnimation(NPC.Animation.HURT);
         broadcast(plugin.getMessages().getRandomNPCMessage(npc, "winner"));
         broadcast(plugin.getMessages().getWinners(names.length, Arrays.toString(names)));
 
@@ -677,11 +730,22 @@ public final class Game {
             }
 
             RUtils.handleMessage(winner, plugin.getMessages().getPrice(plugin.getEconomy().format(price), slot.getMultiplier()));
+
+            Winner win = plugin.getWinners().getByUniqueId(winner.getUniqueId());
+            if (win == null) {
+                win = new Winner(winner.getUniqueId());
+            }
+            // Null for mapId, we'll change it in the next update.
+            win.add(null, price);
+
+            plugin.getWinners().saveWinner(win);
+
+            // if (!Configuration.Config.MAP_IMAGE.asBoolean()) continue; TODO: (NEXT UPDATE)
         }
 
         if (Configuration.Config.RESTART_FIREWORKS.asInt() == 0) {
             broadcast(Messages.Message.RESTART.asString());
-            plugin.getServer().getScheduler().runTaskLater(plugin, this::restart, Configuration.Config.RESTART_TIME.asInt() * 20L);
+            restartRunnable(false);
             return;
         }
 
@@ -695,11 +759,32 @@ public final class Game {
                     cancel();
                 }
                 spawnFirework(joinHologram.getLocation());
+                npc.playAnimation(NPC.Animation.HURT);
                 amount++;
             }
         }.runTaskTimer(plugin, 0L, plugin.getConfiguration().getPeriod());
 
         broadcast(Messages.Message.RESTART.asString());
+    }
+
+    private void restartRunnable(boolean jump) {
+        new BukkitRunnable() {
+            int time = 0;
+
+            @Override
+            public void run() {
+                if (time == Configuration.Config.RESTART_TIME.asInt()) {
+                    restart();
+                    cancel();
+                }
+                // If @npc-reaction is true, the NPC will jump until the game ends.
+                if (Configuration.Config.NPC_REACTION.asBoolean()) {
+                    if (jump) npc.jump();
+                    else npc.playAnimation(NPC.Animation.HURT);
+                }
+                time++;
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
     }
 
     private void spawnFirework(Location location) {
@@ -708,6 +793,8 @@ public final class Game {
 
         Firework firework = location.getWorld().spawn(location.clone().subtract(0.0d, 0.5d, 0.0d), Firework.class);
         FireworkMeta meta = firework.getFireworkMeta();
+
+        firework.setMetadata("isRoulette", new FixedMetadataValue(plugin, true));
 
         FireworkEffect.Builder builder = FireworkEffect.builder()
                 .flicker(true)
@@ -731,13 +818,13 @@ public final class Game {
         if (!isSlotAvailable()) return;
         if (!chips.containsKey(uuid)) return;
 
-        int ordinal = ArrayUtils.indexOf(Slot.getValues(type.isEuropean()), selected.get(uuid).getKey());
+        int ordinal = ArrayUtils.indexOf(Slot.getValues(this), selected.get(uuid).getKey());
 
         Slot slot;
         do {
             ordinal--;
-            if (ordinal < 0) ordinal = Slot.getValues(type.isEuropean()).length - 1;
-            slot = Slot.getValues(type.isEuropean())[ordinal];
+            if (ordinal < 0) ordinal = Slot.getValues(this).length - 1;
+            slot = Slot.getValues(this)[ordinal];
         } while (alreadySelected(slot));
 
         handleChipDisplay(uuid, false);
@@ -751,7 +838,7 @@ public final class Game {
         if (!chips.containsKey(uuid)) return;
 
         if (!selected.containsKey(uuid)) {
-            for (Slot slot : Slot.getValues(type.isEuropean())) {
+            for (Slot slot : Slot.getValues(this)) {
                 if (alreadySelected(slot)) continue;
 
                 selected.put(uuid, new AbstractMap.SimpleEntry<>(slot, slots.get(slot)));
@@ -762,13 +849,13 @@ public final class Game {
             return;
         }
 
-        int ordinal = ArrayUtils.indexOf(Slot.getValues(type.isEuropean()), selected.get(uuid).getKey());
+        int ordinal = ArrayUtils.indexOf(Slot.getValues(this), selected.get(uuid).getKey());
 
         Slot slot;
         do {
             ordinal++;
-            if (ordinal > Slot.getValues(type.isEuropean()).length - 1) ordinal = 0;
-            slot = Slot.getValues(type.isEuropean())[ordinal];
+            if (ordinal > Slot.getValues(this).length - 1) ordinal = 0;
+            slot = Slot.getValues(this)[ordinal];
         } while (alreadySelected(slot));
 
         handleChipDisplay(uuid, false);
@@ -786,7 +873,7 @@ public final class Game {
 
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean isSlotAvailable() {
-        for (Slot slot : Slot.getValues(type.isEuropean())) {
+        for (Slot slot : Slot.getValues(this)) {
             if (alreadySelected(slot)) continue;
             return true;
         }
@@ -817,50 +904,77 @@ public final class Game {
     }
 
     private void showSelected(UUID uuid) {
+        boolean isHD = Roulette.USE_HOLOGRAPHIC;
+
         Vector offset = RUtils.offsetVector(new Vector(0.22d, 1.15d, 0.41d), location.getYaw(), location.getPitch());
         Location where = selected.get(uuid).getValue().getLocation().clone().add(offset);
 
         Validate.notNull(where.getWorld(), "World can't be null.");
         where.getWorld().playSound(where, Sound.valueOf(Configuration.Config.SOUND_SELECT.asString()), 1.0f, 1.0f);
 
-        if (holograms.containsKey(uuid)) {
-            holograms.get(uuid).teleport(where);
-            return;
-        }
-
         Player player = Bukkit.getPlayer(uuid);
         if (player == null) return;
 
-        String placeholder = String.format(S_BET, player.getName());
-        HologramsAPI.registerPlaceholder(plugin, placeholder, 0.25d, () -> getPlayerBet(uuid));
+        if (holograms.containsKey(uuid)) {
+            holograms.get(uuid).teleport(player, where);
+            if (!isHD) {
+                plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> hideToAllExcept(player, holograms.get(uuid)), 2L);
+            }
+            return;
+        }
+
+        String hologramName = Roulette.USE_HOLOGRAPHIC ? null : "selected-hologram-" + name + "-" + player.getName();
+        Hologram hologram = RUtils.createHologram(this, hologramName, where);
+        if (isHD) {
+            hologram.setVisibleByDefault(false);
+            hologram.showTo(player);
+        }
+
+        // Register the placeholder for the personal hologram (if using HD).
+        String placeholder = isHD ? String.format(HD_BET, player.getName()) : CMI_BET;
+        if (isHD) {
+            HologramsAPI.registerPlaceholder(plugin, placeholder, 0.15d, () -> getPlayerBet(uuid));
+        }
         placeholders.add(placeholder);
 
-        Hologram hologram = HologramsAPI.createHologram(plugin, where);
-
-        hologram.getVisibilityManager().setVisibleByDefault(false);
-        hologram.getVisibilityManager().showTo(player);
-        hologram.setAllowPlaceholders(true);
-
         for (String line : Configuration.Config.SELECT_HOLOGRAM.asList()) {
-            hologram.appendTextLine(line
+            hologram.addLine(line
                     .replaceAll("%player%", player.getName())
-                    .replaceAll("%bet%", placeholder)
-            );
+                    .replaceAll("%bet%", placeholder), false);
+        }
+
+        // If is CMI, we delay a task 2 ticks and hide the hologram to every player.
+        if (!isHD) {
+            plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> hideToAllExcept(player, hologram), 2L);
         }
 
         holograms.put(uuid, hologram);
     }
 
-    public String getPlayerBet(UUID uuid) {
+    private void hideToAllExcept(Player player, Hologram hologram) {
+        for (Player online : player.getWorld().getPlayers()) {
+            if (online.getUniqueId().equals(player.getUniqueId())) continue;
+            hologram.hideTo(online);
+        }
+    }
+
+    public Slot getPlayerSlot(UUID uuid) {
         if (!selected.containsKey(uuid)) return null;
-        return RUtils.getSlotName(selected.get(uuid).getKey());
+        return selected.get(uuid).getKey();
+    }
+
+    public String getPlayerBet(UUID uuid) {
+        Slot slot = getPlayerSlot(uuid);
+        return (slot != null) ? RUtils.getSlotName(slot) : null;
     }
 
     public void delete(boolean removeNPC, boolean isIterator, boolean isGlobalReload) {
         restart();
 
-        placeholders.forEach(placeholder -> HologramsAPI.unregisterPlaceholder(plugin, placeholder));
-        placeholders.clear();
+        if (Roulette.USE_HOLOGRAPHIC) {
+            placeholders.forEach(placeholder -> HologramsAPI.unregisterPlaceholder(plugin, placeholder));
+            placeholders.clear();
+        }
 
         parts.forEach((part, stand) -> stand.remove());
         parts.clear();
@@ -877,7 +991,7 @@ public final class Game {
         deleteHolograms(joinHologram, spinHologram);
 
         if (npc != null) {
-            npc.getOrAddTrait(LookCloseModified.class).lookClose(false);
+            npc.lookAround(npc, false);
             if (removeNPC) npc.destroy();
         }
 
@@ -913,6 +1027,9 @@ public final class Game {
         return location;
     }
 
+    /**
+     * NOTE: You should only use it for get the UUID of the creator or the NPc, since the others settings can be different after a while.
+     */
     public GameData getData() {
         return data;
     }
@@ -921,12 +1038,32 @@ public final class Game {
         return isDone;
     }
 
+    public boolean isBetAll() {
+        return betAll;
+    }
+
+    public void setBetAll(boolean betAll) {
+        this.betAll = betAll;
+    }
+
+    public int getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(int startTime) {
+        this.startTime = (startTime < 5) ? 5 : (startTime > 60) ? 60 : (int) (5 * (Math.ceil(Math.abs(startTime / 5))));
+    }
+
     public Integer getTask() {
         return task;
     }
 
     public Set<UUID> getPlayers() {
         return players;
+    }
+
+    public Set<Slot> getDisabled() {
+        return disabled;
     }
 
     public Map<Part, ArmorStand> getParts() {
@@ -982,11 +1119,13 @@ public final class Game {
     }
 
     public void setMinPlayers(int minPlayers) {
+        // TODO: TESTING
         this.minPlayers = (minPlayers < 1) ? 1 : Math.min(minPlayers, 10);
+        //this.minPlayers = (minPlayers < 1) ? ((minPlayers == maxPlayers) ? maxPlayers : minPlayers) : Math.min(minPlayers, 10);
     }
 
     public void setMaxPlayers(int maxPlayers) {
-        this.maxPlayers = maxPlayers < minPlayers ? (minPlayers == 10 ? 10 : minPlayers) : Math.min(maxPlayers, 10);
+        this.maxPlayers = (maxPlayers < minPlayers) ? ((minPlayers == 10) ? 10 : minPlayers) : Math.min(maxPlayers, 10);
     }
 
     public void setLimitPlayers(int minPlayers, int maxPlayers) {
@@ -996,8 +1135,8 @@ public final class Game {
 
     public void setWaiting() {
         state = GameState.WAITING;
-        joinHologram.getVisibilityManager().setVisibleByDefault(true);
-        joinHologram.getVisibilityManager().resetVisibilityAll();
+        joinHologram.setVisibleByDefault(true);
+        joinHologram.resetVisibilityAll();
     }
 
     public void setCountdown() {
@@ -1006,7 +1145,8 @@ public final class Game {
 
     public void setSelecting() {
         state = GameState.SELECTING;
-        joinHologram.getVisibilityManager().setVisibleByDefault(false);
+        joinHologram.setVisibleByDefault(false);
+        joinHologram.resetVisibilityAll();
     }
 
     public void setAccount(OfflinePlayer account) {

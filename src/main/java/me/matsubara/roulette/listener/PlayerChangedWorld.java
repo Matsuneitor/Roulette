@@ -20,6 +20,11 @@ public final class PlayerChangedWorld implements Listener {
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
 
+        // Show NPC's to the player.
+        for (Game game : plugin.getGames().getGamesSet()) {
+            game.getNPC().show(player);
+        }
+
         Game game = plugin.getGames().getGameByPlayer(player);
         if (game == null) return;
 

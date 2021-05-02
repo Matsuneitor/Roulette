@@ -1,7 +1,9 @@
 package me.matsubara.roulette.data;
 
+import com.cryptomorin.xseries.XMaterial;
+import me.matsubara.roulette.game.Game;
+import me.matsubara.roulette.util.RUtils;
 import org.apache.commons.lang.ArrayUtils;
-import org.bukkit.Material;
 
 public enum Part {
     // Borders of the table.
@@ -141,7 +143,7 @@ public enum Part {
     SPINNER_1_2("EMPTY", -0.890625d, 1.585d, -0.890625d),
 
     // Target entity for the NPC.
-    NPC_TARGET("MATERIAL:EMPTY", -1.275d, 2.1d, 0.0d),
+    NPC_TARGET("MATERIAL:EMPTY", -1.275d, 2.1d, -1.0d),
 
     // The ball.
     BALL("MATERIAL:END_ROD", -0.890625d, -0.15d, -0.890625d),
@@ -278,17 +280,9 @@ public enum Part {
         return isMaterial() ? url.substring(9) : url;
     }
 
-    public Material getMaterial() {
+    public XMaterial getXMaterial() {
         if (!isMaterial()) return null;
-        try {
-            return Material.valueOf(getUrl());
-        } catch (IllegalArgumentException exception) {
-            return null;
-        }
-    }
-
-    public static int getSize(boolean isEuropean) {
-        return isEuropean ? EUROPEAN.length : AMERICAN.length;
+        return XMaterial.matchXMaterial(getUrl()).orElse(null);
     }
 
     public double getOffsetX() {
@@ -303,7 +297,13 @@ public enum Part {
         return offsetZ;
     }
 
-    public static Part[] getValues(boolean isEuropean) {
-        return isEuropean ? EUROPEAN : AMERICAN;
+    public static Part[] getValues(Game game) {
+        Part[] values = game.getType().isEuropean() ? EUROPEAN : AMERICAN;
+
+        for (Slot slot : game.getDisabled()) {
+            values = (Part[]) ArrayUtils.removeElement(values, RUtils.SLOT_PART.get(slot));
+        }
+
+        return values;
     }
 }

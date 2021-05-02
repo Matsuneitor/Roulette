@@ -6,7 +6,7 @@
 
     <groupId>me.matsubara</groupId>
     <artifactId>Roulette</artifactId>
-    <version>6.1-SNAPSHOT</version>
+    <version>6.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Roulette</name>
@@ -33,11 +33,35 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.2.4</version>
                 <configuration>
+                    <relocations>
+                        <!-- AnvilGUI -->
+                        <relocation>
+                            <pattern>net.wesjd</pattern>
+                            <shadedPattern>me.matsubara.roulette.util</shadedPattern>
+                        </relocation>
+                        <!-- XSeries -->
+                        <relocation>
+                            <pattern>com.cryptomorin</pattern>
+                            <shadedPattern>me.matsubara.roulette.util</shadedPattern>
+                        </relocation>
+                    </relocations>
                     <filters>
                         <filter>
                             <artifact>*:*</artifact>
                             <excludes>
                                 <exclude>META-INF/*.MF</exclude>
+                                <exclude>com/cryptomorin/xseries/NMSExtras*</exclude>
+                                <exclude>com/cryptomorin/xseries/NoteBlockMusic*</exclude>
+                                <exclude>com/cryptomorin/xseries/XBiome*</exclude>
+                                <exclude>com/cryptomorin/xseries/XBlock*</exclude>
+                                <exclude>com/cryptomorin/xseries/XEnchantment*</exclude>
+                                <exclude>com/cryptomorin/xseries/XEntity*</exclude>
+                                <exclude>com/cryptomorin/xseries/XItemStack*</exclude>
+                                <exclude>com/cryptomorin/xseries/XMaterialUtil*</exclude>
+                                <exclude>com/cryptomorin/xseries/XPotion*</exclude>
+                                <exclude>com/cryptomorin/xseries/messages/Titles*</exclude>
+                                <exclude>com/cryptomorin/xseries/particles/ParticleDisplay*</exclude>
+                                <exclude>com/cryptomorin/xseries/particles/XParticle*</exclude>
                             </excludes>
                         </filter>
                     </filters>
@@ -64,37 +88,55 @@
     </build>
 
     <repositories>
+        <!-- for Spigot -->
         <repository>
             <id>spigotmc-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+        <!-- for Spigot & NPCLib -->
         <repository>
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
         </repository>
+        <!-- for AuthLib -->
         <repository>
             <id>minecraft-repo</id>
             <url>https://libraries.minecraft.net/</url>
         </repository>
+        <!-- for Citizens -->
         <repository>
             <id>everything</id>
             <url>https://repo.citizensnpcs.co/</url>
         </repository>
+        <!-- for HolographicDisplays -->
         <repository>
             <id>codemc-repo</id>
-            <url>https://repo.codemc.io/repository/maven-public/</url>
+            <url>https://repo.codemc.org/repository/maven-public/</url>
         </repository>
+        <!-- for ProtocolLib -->
         <repository>
             <id>dmulloy2-repo</id>
             <url>https://repo.dmulloy2.net/repository/public/</url>
         </repository>
+        <!-- for AnvilGUI -->
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
+        <!-- for Multiverse-Core -->
         <repository>
             <id>OnARandomBox</id>
             <url>http://repo.onarandombox.com/content/groups/public/</url>
+        </repository>
+        <!-- for PlaceholderAPI -->
+        <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
+        </repository>
+        <!-- for EssentialsX -->
+        <repository>
+            <id>essentials</id>
+            <url>https://repo.essentialsx.net/releases/</url>
         </repository>
     </repositories>
 
@@ -104,6 +146,13 @@
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
             <version>1.16.5-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- NCPLib -->
+        <dependency>
+            <groupId>net.jitse</groupId>
+            <artifactId>npclib-api</artifactId>
+            <version>2.12.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <!-- AuthLib -->
@@ -124,7 +173,7 @@
         <dependency>
             <groupId>com.gmail.filoghost.holographicdisplays</groupId>
             <artifactId>holographicdisplays-api</artifactId>
-            <version>2.4.0</version>
+            <version>2.4.6</version>
             <scope>provided</scope>
         </dependency>
         <!-- ProtocolLib -->
@@ -132,6 +181,39 @@
             <groupId>com.comphenix.protocol</groupId>
             <artifactId>ProtocolLib</artifactId>
             <version>4.6.0</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>net.bytebuddy</groupId>
+                    <artifactId>byte-buddy</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- AnvilGUI -->
+        <dependency>
+            <groupId>net.wesjd</groupId>
+            <artifactId>anvilgui</artifactId>
+            <version>1.5.0-SNAPSHOT</version>
+        </dependency>
+        <!-- Multiverse-Core -->
+        <dependency>
+            <groupId>com.onarandombox.multiversecore</groupId>
+            <artifactId>Multiverse-Core</artifactId>
+            <version>4.2.3-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- PlaceholderAPI -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.10.9</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- EssentialsX -->
+        <dependency>
+            <groupId>net.ess3</groupId>
+            <artifactId>EssentialsX</artifactId>
+            <version>2.18.2</version>
             <scope>provided</scope>
         </dependency>
         <!-- Vault -->
@@ -147,24 +229,33 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- XSeries -->
+        <dependency>
+            <groupId>com.github.cryptomorin</groupId>
+            <artifactId>XSeries</artifactId>
+            <version>7.9.1.1</version>
+        </dependency>
+        <!-- CMI -->
+        <dependency>
+            <groupId>com.Zrips.CMI</groupId>
+            <artifactId>CMI</artifactId>
+            <version>LATEST</version>
+            <systemPath>${project.basedir}/local-maven-repo/com/Zrips/CMI/LATEST/CMI.jar</systemPath>
+            <scope>system</scope>
+        </dependency>
+        <!-- ClearLagg -->
+        <dependency>
+            <groupId>me.minebuilders</groupId>
+            <artifactId>clearlag</artifactId>
+            <version>LATEST</version>
+            <systemPath>${project.basedir}/local-maven-repo/me/minebuilders/clearlag/Clearlag.jar</systemPath>
+            <scope>system</scope>
+        </dependency>
         <!-- Annotations -->
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
             <version>16.0.2</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- AnvilGUI -->
-        <dependency>
-            <groupId>net.wesjd</groupId>
-            <artifactId>anvilgui</artifactId>
-            <version>1.5.0-SNAPSHOT</version>
-        </dependency>
-        <!-- Multiverse-Core -->
-        <dependency>
-            <groupId>com.onarandombox.multiversecore</groupId>
-            <artifactId>Multiverse-Core</artifactId>
-            <version>4.2.3-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

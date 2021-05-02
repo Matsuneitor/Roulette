@@ -8,6 +8,8 @@ import java.util.UUID;
 public final class GameData {
 
     private final String name;
+    private final boolean betAll;
+    private final int startTime;
     private final UUID creator;
     @Nullable
     private final UUID account;
@@ -21,8 +23,10 @@ public final class GameData {
 
     private final boolean isUpdate;
 
-    public GameData(String name, UUID creator, @Nullable UUID account, GameType type, Location location, @Nullable String npcName, @Nullable UUID npcUUID, int minPlayers, int maxPlayers, boolean isUpdate) {
+    public GameData(String name, boolean betAll, int startTime, UUID creator, @Nullable UUID account, GameType type, Location location, @Nullable String npcName, @Nullable UUID npcUUID, int minPlayers, int maxPlayers, boolean isUpdate) {
         this.name = name;
+        this.betAll = betAll;
+        this.startTime = startTime;
         this.creator = creator;
         this.account = account;
         this.type = type;
@@ -36,6 +40,14 @@ public final class GameData {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isBetAll() {
+        return betAll;
+    }
+
+    public int getStartTime() {
+        return startTime;
     }
 
     public UUID getCreator() {

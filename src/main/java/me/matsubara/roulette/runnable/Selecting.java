@@ -5,9 +5,8 @@ import me.matsubara.roulette.data.Slot;
 import me.matsubara.roulette.file.Configuration;
 import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.game.Game;
+import me.matsubara.roulette.npc.NPC;
 import me.matsubara.roulette.util.RUtils;
-import net.citizensnpcs.api.trait.trait.Equipment;
-import net.citizensnpcs.util.PlayerAnimation;
 import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -71,17 +70,24 @@ public final class Selecting extends BukkitRunnable {
                 Player owner = Bukkit.getPlayer(uuid);
                 if (owner == null) continue;
 
-                game.getHolograms().get(uuid).getVisibilityManager().hideTo(owner);
+                if (Roulette.USE_HOLOGRAPHIC) {
+                    game.getHolograms().get(uuid).hideTo(owner);
+                } else {
+                    // TODO: Testing delete() instead of setVisibleByDefault().
+                    game.getHolograms().get(uuid).delete();
+                }
             }
+
+            // Play NPC spin animation.
+            game.getNPC().setPose(NPC.Pose.SNEAKING);
+            game.getNPC().playAnimation(NPC.Animation.SWING);
+            game.getNPC().setItemInHand(null);
 
             // Start sorting runnable.
             Sorting sort = new Sorting(game);
             sort.runTaskTimer(plugin, 0L, 1L);
             game.setSortingRunnable(sort);
 
-            // Play NPC spin animation.
-            PlayerAnimation.ARM_SWING.play((Player) game.getNPC().getEntity());
-            game.getNPC().getOrAddTrait(Equipment.class).set(Equipment.EquipmentSlot.HAND, null);
             cancel();
             return;
         }

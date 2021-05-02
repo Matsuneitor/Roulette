@@ -6,9 +6,9 @@ import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.game.GameData;
 import me.matsubara.roulette.game.GameType;
-import me.matsubara.roulette.trait.LookCloseModified;
 import me.matsubara.roulette.util.RUtils;
 import org.apache.commons.lang.ArrayUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.BlockFace;
@@ -40,6 +40,22 @@ public final class Main implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
+            // This command is only for CMI holograms and has to be executed by the console.
+            if (args.length == 3 && args[0].equalsIgnoreCase("join")) {
+
+                Player player = Bukkit.getPlayer(args[1]);
+                if (player == null || !player.isOnline()) return true;
+
+                Game game = plugin.getGames().getGameByName(args[2]);
+                if (game == null) return true;
+
+                if (!RUtils.canJoin(player, game)) return true;
+
+                // Add player to the game and announce it.
+                game.addPlayer(player);
+                game.broadcast(plugin.getMessages().getJoinMessage(player.getName(), game.size(), game.getMaxPlayers()));
+                return true;
+            }
             RUtils.handleMessage(sender, Messages.Message.FROM_CONSOLE.asString());
             return true;
         }
@@ -69,20 +85,30 @@ public final class Main implements CommandExecutor, TabCompleter {
 
             plugin.getLogger().info("Reloading " + plugin.getDescription().getFullName());
 
-            int temp = Configuration.Config.LOOK_DISTANCE.asInt();
+            int tempLookDistance = Configuration.Config.LOOK_DISTANCE.asInt();
+            String tempBall = Configuration.Config.CROUPIER_BALL.asString();
 
             plugin.reloadConfig();
+            plugin.getWinners().reloadConfig();
             plugin.getChips().reloadConfig();
             plugin.getGames().reloadConfig();
             plugin.getMessages().reloadConfig();
 
-            int current = Configuration.Config.LOOK_DISTANCE.asInt();
+            int currentLookDistance = Configuration.Config.LOOK_DISTANCE.asInt();
+            String currentBall = Configuration.Config.CROUPIER_BALL.asString();
 
-            // If the look distance has changed, we update it to every game.
-            if (temp != current) {
-                for (Game game : plugin.getGames().getGamesSet()) {
-                    if (game.getNPC() == null) continue;
-                    game.getNPC().getOrAddTrait(LookCloseModified.class).setRange(current);
+            for (Game game : plugin.getGames().getGamesSet()) {
+                if (game.getNPC() == null) continue;
+
+                // If the look distance has changed, we update it to every game.
+                if (tempLookDistance != currentLookDistance) game.getNPC().setRange(currentLookDistance);
+
+                // If the ball of the NPC is the same as before, continue; otherwise, update it.
+                if (tempBall.equalsIgnoreCase(currentBall)) continue;
+
+                // If right know the NPC doesn't have a ball in his hand, it'll be updated automatically.
+                if (game.getNPC() != null && !game.getState().isSpinning() && !game.getState().isEnding()) {
+                    game.getNPC().setItemInHand(plugin.getConfiguration().getBall());
                 }
             }
 
@@ -126,9 +152,12 @@ public final class Main implements CommandExecutor, TabCompleter {
                         game.delete(true, false, false);
                     } else {
                         for (Entity entity : player.getWorld().getEntities()) {
+
                             PersistentDataContainer container = entity.getPersistentDataContainer();
+                            if (container == null) continue;
 
                             NamespacedKey key = new NamespacedKey(plugin, "fromRoulette");
+
                             if (!container.has(key, PersistentDataType.STRING)) continue;
                             if (!container.get(key, PersistentDataType.STRING).equalsIgnoreCase(args[1])) continue;
 
@@ -186,7 +215,7 @@ public final class Main implements CommandExecutor, TabCompleter {
 
         Location location = getCorrectLocation(player);
 
-        GameData data = new GameData(args[1], player.getUniqueId(), null, type, location, npc, null, min, max, false);
+        GameData data = new GameData(args[1], true, Configuration.Config.COUNTDOWN_WAITING.asInt(), player.getUniqueId(), null, type, location, npc, null, min, max, false);
         plugin.getGames().getGameDatas().add(data);
 
         // If create next game is running, no need to call the method again.

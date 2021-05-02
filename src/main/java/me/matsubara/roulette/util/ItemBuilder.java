@@ -70,6 +70,7 @@ public final class ItemBuilder implements Cloneable {
     public ItemBuilder setOwningPlayer(OfflinePlayer player) {
         try {
             SkullMeta meta = (SkullMeta) item.getItemMeta();
+            meta.setOwningPlayer(player);
             item.setItemMeta(meta);
         } catch (ClassCastException ignore) {
         }
@@ -165,7 +166,6 @@ public final class ItemBuilder implements Cloneable {
     }
 
     public ItemStack build() {
-        addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         return item;
     }
 }

@@ -1,9 +1,11 @@
 package me.matsubara.roulette.file;
 
+import com.cryptomorin.xseries.XMaterial;
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.util.ItemBuilder;
 import me.matsubara.roulette.util.RUtils;
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 
 import javax.annotation.Nullable;
@@ -41,6 +43,10 @@ public final class Configuration {
         return getLore("game-menu", "account");
     }
 
+    public String getStartTimeDisplayName(int time) {
+        return getDisplayName("game-menu", "start-time").replace("%seconds%", String.valueOf(time));
+    }
+
     public String getChipDisplayName(double price) {
         return getDisplayName("shop", "chip").replace("%money%", plugin.getEconomy().format(price));
     }
@@ -50,21 +56,47 @@ public final class Configuration {
     }
 
     public ItemStack getItem(String gui, String type, @Nullable String money) {
-        Material material = Material.valueOf(getMaterial(gui, type));
+        Material material = XMaterial.matchXMaterial(getMaterial(gui, type)).map(XMaterial::parseMaterial).orElse(null);
+        if (material == null) return null;
 
         String displayName = (money != null) ? getDisplayName(gui, type).replace("%money%", money) : getDisplayName(gui, type);
 
+        ItemBuilder builder;
         if (isSkull(gui, type, material)) {
-            return new ItemBuilder(getUrl(gui, type)).setDisplayName(displayName).setLore(getLore(gui, type)).build();
+            builder = new ItemBuilder(getUrl(gui, type)).setDisplayName(displayName).setLore(getLore(gui, type));
+        } else {
+            builder = new ItemBuilder(material).setDisplayName(displayName).setLore(getLore(gui, type));
         }
-        return new ItemBuilder(material).setDisplayName(displayName).setLore(getLore(gui, type)).build();
+        if (hasAttributes(gui, type)) builder.addItemFlags(getAttributes(gui, type));
+        return builder.build();
     }
 
     private boolean isSkull(String gui, String type, Material material) {
-        return plugin.getConfig().contains(gui + "." + type + ".url", false) && material == Material.PLAYER_HEAD;
+        return plugin.getConfig().get(gui + "." + type + ".url") != null && material == XMaterial.PLAYER_HEAD.parseMaterial();
     }
 
-    private String getUrl(String gui, String path) {
+    private boolean hasAttributes(String gui, String path) {
+        return plugin.getConfig().contains(gui + "." + path + ".attributes", false);
+    }
+
+    private ItemFlag[] getAttributes(String gui, String path) {
+        return plugin.getConfig().getStringList(gui + "." + path + ".attributes").stream().map(this::getAttribute).toArray(ItemFlag[]::new);
+    }
+
+    private ItemFlag getAttribute(String attribute) {
+        try {
+            return ItemFlag.valueOf(attribute);
+        } catch (IllegalArgumentException exception) {
+            exception.printStackTrace();
+            return null;
+        }
+    }
+
+    public boolean hasUrl(String gui, String path) {
+        return plugin.getConfig().contains(gui + "." + path + ".url", false);
+    }
+
+    public String getUrl(String gui, String path) {
         return plugin.getConfig().getString(gui + "." + path + ".url");
     }
 
@@ -82,15 +114,21 @@ public final class Configuration {
 
     public enum Config {
         DEBUG("debug"),
+        SKIN_TEXTURE("skin.texture"),
+        SKIN_SIGNATURE("skin.signature"),
         UPDATE_CHECKER("update-checker"),
         LOOK_DISTANCE("look-distance"),
+        REALISTIC_LOOKING("realistic-looking"),
         SWAP_CHAIR("swap-schair"),
         INSTANT_EXPLODE("instant-explode"),
         FIX_CHAIR_CAMERA("fix-chair-camera"),
         NPC_LOOK_AROUND("npc-look-around"),
         NPC_IMITATE("npc-imitate"),
         NPC_INVITE("npc-invite"),
+        NPC_REACTION("npc-reaction"),
+        NPC_PROJECTILE("npc-projectile"),
         INVITE_INTERVAL("invite-interval"),
+        LEAVE_CONFIRM("leave-confirm"),
         LEAVE_CONFIRM_INTERVAL("leave-confirm-interval"),
         MOVE_CHIP_INTERVAL("move-chip-interval"),
         CROUPIER_BALL("croupier-ball.material"),
@@ -105,6 +143,8 @@ public final class Configuration {
         SOUND_SPINNING("sound.spinning"),
         SOUND_SWAP_CHAIR("sound.swap-chair"),
         SOUND_SELECT("sound.select"),
+        DISABLED_SLOTS("disabled-slots"),
+        MAP_IMAGE("map-image"),
         PROGRESS("progress"),
         PROGRESS_CHARACTER("progress-character"),
         SPINNING("spin-holograms.spinning"),
@@ -130,6 +170,8 @@ public final class Configuration {
         NOT_ENOUGH_MONEY_MATERIAL("not-enough-money.material"),
         NOT_ENOUGH_MONEY_DISPLAY_NAME("not-enough-money.display-name"),
         NOT_ENOUGH_MONEY_LORE("not-enough-money.lore"),
+        STATE_ENABLED("state.enabled"),
+        STATE_DISABLED("state.disabled"),
         SHOP_TITLE("shop.title"),
         GAME_MENU_TITLE("game-menu.title");
 

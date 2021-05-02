@@ -1,27 +1,32 @@
 package me.matsubara.roulette.file;
 
+import com.onarandombox.MultiverseCore.MultiverseCore;
+import com.onarandombox.MultiverseCore.api.MVWorldManager;
+import com.onarandombox.MultiverseCore.api.MultiverseWorld;
 import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.game.GameData;
 import me.matsubara.roulette.game.GameType;
+import me.matsubara.roulette.npc.NPC;
 import me.matsubara.roulette.util.RUtils;
-import net.citizensnpcs.api.CitizensAPI;
-import net.citizensnpcs.api.npc.NPC;
 import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public final class Games {
 
@@ -42,7 +47,37 @@ public final class Games {
         this.gameDatas = new ArrayList<>();
         this.games = new HashSet<>();
         this.isRunning = false;
-        load();
+        if (!hasMultiverse()) load();
+    }
+
+    private boolean hasMultiverse() {
+        if (!Bukkit.getPluginManager().isPluginEnabled("Multiverse-Core")) return false;
+
+        // If the server is using MC, then we'll wait until every world has been loaded.
+        MultiverseCore core = (MultiverseCore) Bukkit.getPluginManager().getPlugin("Multiverse-Core");
+        if (core == null) return false;
+
+        MVWorldManager manager = core.getMVWorldManager();
+
+        // If all worlds has been loaded, then load every game.
+        if (manager.getUnloadedWorlds().isEmpty()) {
+            load();
+            return true;
+        }
+
+        logger.info("Multiverse-Core has been detected, waiting for all worlds to be loaded...");
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (manager.getUnloadedWorlds().isEmpty()) {
+                    logger.info("All the worlds have been loaded, ready to load the games!");
+                    load();
+                    cancel();
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+        return true;
     }
 
     private void load() {
@@ -53,6 +88,16 @@ public final class Games {
         configuration = new YamlConfiguration();
         try {
             configuration.load(file);
+
+            // Remove entities from MC worlds, if present.
+            if (Bukkit.getPluginManager().isPluginEnabled("Multiverse-Core")) {
+                MultiverseCore core = (MultiverseCore) Bukkit.getPluginManager().getPlugin("Multiverse-Core");
+                if (core != null) {
+                    MVWorldManager manager = core.getMVWorldManager();
+                    plugin.removeEntities(manager.getMVWorlds().stream().map(MultiverseWorld::getCBWorld).collect(Collectors.toList()));
+                }
+            }
+
             update(false);
         } catch (IOException | InvalidConfigurationException exception) {
             exception.printStackTrace();
@@ -74,6 +119,9 @@ public final class Games {
         for (String path : keys) {
             loaded++;
 
+            boolean betAll = getConfig().getBoolean("games." + path + ".bet-all");
+            int startTime = getConfig().getInt("games." + path + ".start-time");
+
             String uuid = getConfig().getString("games." + path + ".creator-uuid");
             UUID creatorUUID = uuid.equalsIgnoreCase("null") ? null : UUID.fromString(uuid);
 
@@ -89,8 +137,11 @@ public final class Games {
             }
 
             // Check that the location from the file isn't null.
-            Location location = (Location) getConfig().get("games." + path + ".location");
-            Validate.notNull(location, "Location can't be null.");
+            Location location = loadLocation(path);
+            if (location == null) {
+                plugin.getLogger().severe("Location from game " + path + " is null, can't be created.");
+                continue;
+            }
 
             uuid = getConfig().getString("games." + path + ".npc-uuid");
             UUID npcUUID = uuid.equalsIgnoreCase("null") ? null : UUID.fromString(uuid);
@@ -123,14 +174,16 @@ public final class Games {
                     shouldRecreate = false;
                     current.restart();
                     current.setLimitPlayers(minPlayers, maxPlayers);
-                    current.setupJoinHologram(String.format(Game.S_PLAYING, path));
+                    current.setupJoinHologram(String.format(Roulette.USE_HOLOGRAPHIC ? Game.HD_PLAYING : Game.CMI_PLAYING, path));
+                    current.setStartTime(startTime);
+                    current.setBetAll(betAll);
                     saveGame(current);
                     break;
                 }
             }
 
             if (shouldRecreate) {
-                GameData data = new GameData(path, creatorUUID, accountUUID, type, location, null, npcUUID, minPlayers, maxPlayers, true);
+                GameData data = new GameData(path, betAll, startTime, creatorUUID, accountUUID, type, location, null, npcUUID, minPlayers, maxPlayers, true);
                 gameDatas.add(data);
             }
         }
@@ -173,7 +226,7 @@ public final class Games {
 
         // If has NPC, remove it.
         if (game.getNPC() == null) {
-            NPC npc = CitizensAPI.getNPCRegistry().getByUniqueId(game.getData().getNPCUUID());
+            NPC npc = RUtils.getNPCByUniqueId(game.getData().getNPCUUID(), game);
             if (npc != null) npc.destroy();
         }
 
@@ -195,6 +248,8 @@ public final class Games {
 
     public void saveGame(Game game) {
         games.add(game);
+        getConfig().set("games." + game.getName() + ".bet-all", game.isBetAll());
+        getConfig().set("games." + game.getName() + ".start-time", game.getStartTime());
         // Save the UUID of the creator.
         String creatorUUID = (game.getData().getCreator() == null) ? "null" : game.getData().getCreator().toString();
         getConfig().set("games." + game.getName() + ".creator-uuid", creatorUUID);
@@ -204,7 +259,8 @@ public final class Games {
         getConfig().set("games." + game.getName() + ".account-uuid", accountUUID);
 
         getConfig().set("games." + game.getName() + ".type", game.getType().toString());
-        getConfig().set("games." + game.getName() + ".location", game.getLocation());
+        saveLocation(game.getName(), game.getLocation());
+        //getConfig().set("games." + game.getName() + ".location", game.getLocation());
 
         // Save the UUID of the NPC, if exist.
         String npcUUID = (game.getNPC() == null) ? "null" : game.getNPC().getUniqueId().toString();
@@ -213,6 +269,46 @@ public final class Games {
         getConfig().set("games." + game.getName() + ".min-players", game.getMinPlayers());
         getConfig().set("games." + game.getName() + ".max-players", game.getMaxPlayers());
         saveConfig();
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    private Location loadLocation(String path) {
+        String worldName = getConfig().getString("games." + path + ".location.world");
+        double x = getConfig().getDouble("games." + path + ".location.x");
+        double y = getConfig().getDouble("games." + path + ".location.y");
+        double z = getConfig().getDouble("games." + path + ".location.z");
+        float yaw = (float) getConfig().getDouble("games." + path + ".location.yaw");
+        float pitch = (float) getConfig().getDouble("games." + path + ".location.pitch");
+
+        World world = Bukkit.getWorld(worldName);
+
+        if (world == null) {
+            // Maybe the world doens't exist anymore.
+            if (!plugin.hasDependency("Multiverse-Core")) return null;
+
+            // If is using MC, we tried to get the world from the plugin.
+            MultiverseCore core = (MultiverseCore) Bukkit.getPluginManager().getPlugin("Multiverse-Core");
+            if (core != null) {
+                MVWorldManager manager = core.getMVWorldManager();
+
+                MultiverseWorld mvWorld = manager.getMVWorld(worldName);
+                if (mvWorld == null) return null;
+
+                world = mvWorld.getCBWorld();
+            } else return null;
+        }
+
+        return new Location(world, x, y, z, yaw, pitch);
+    }
+
+    private void saveLocation(String path, Location location) {
+        Validate.notNull(location.getWorld(), "World can't be null.");
+        getConfig().set("games." + path + ".location.world", location.getWorld().getName());
+        getConfig().set("games." + path + ".location.x", location.getX());
+        getConfig().set("games." + path + ".location.y", location.getY());
+        getConfig().set("games." + path + ".location.z", location.getZ());
+        getConfig().set("games." + path + ".location.yaw", location.getYaw());
+        getConfig().set("games." + path + ".location.pitch", location.getPitch());
     }
 
     public void deleteGame(Game game, boolean isIterator) {
@@ -253,9 +349,9 @@ public final class Games {
         return null;
     }
 
-    public Game getGameByNPC(NPC npc) {
+    public Game getGameByNPCUUID(UUID uuid) {
         for (Game game : games) {
-            if (game.getNPC() != null && game.getNPC().equals(npc)) return game;
+            if (game.getNPC() != null && game.getNPC().getUniqueId().equals(uuid)) return game;
         }
         return null;
     }

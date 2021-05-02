@@ -41,13 +41,15 @@ public final class InventoryClose implements Listener {
         if (game == null) return;
         if (game.getState() != GameState.SELECTING) return;
 
+        // If somehow the player isn't in the game anymore (maybe leave the game with the chip GUI exit item), return.
+        if (!game.getPlayers().contains(player.getUniqueId())) return;
+
         // If the player already selected a chip, return.
         if (game.getChips().containsKey(player.getUniqueId())) return;
-        //if (game.getSelected().containsKey(player.getUniqueId())) return;
 
         // If the GUIHolder type is CONFIRM, reopen the chip inventory.
-        if (holder.getType() == GUIType.CONFIRM) {
-            plugin.getServer().getScheduler().runTask(plugin, () -> new GUI(plugin, player, game));
+        if (holder.getType() == GUIType.CONFIRM_BET_ALL) {
+            plugin.getServer().getScheduler().runTask(plugin, () -> new GUI(player, game));
             return;
         }
 
@@ -55,7 +57,7 @@ public final class InventoryClose implements Listener {
             @Override
             public void run() {
                 GUIHolder holder = getHolder(player.getOpenInventory().getTopInventory());
-                if (holder == null) new GUI(plugin, player, game);
+                if (holder == null) new GUI(player, game);
             }
         }.runTaskLater(plugin, 2L);
     }

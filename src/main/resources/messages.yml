@@ -51,6 +51,7 @@ messages.commands:
 # %amount% - the amount of winners in the game. (@winners and @price)
 # %winners% - a list with the names of the winners, separated by commas. (@winners)
 # %multiplier% - the prize multiplier, depending on the slot. (@price)
+# %winner% - the winning slot. (@no-winner)
 messages.states:
   starting: "&6Starting the game in &e%seconds% &6seconds..."
   select-bet: "&6Please, select your bet."
@@ -66,7 +67,7 @@ messages.states:
   spinning-start: "&6Spinning..."
   join: "&e%player% &6has joined the game. (&e%playing%&6/&e%max%&6)"
   leave: "&4%player% &chas left the game. (&4%playing%&c/&4%max%&c)"
-  no-winner: "&cThe winner is... the casino!"
+  no-winner: "&cThe winner is... the casino! %winner%"
   winners:
     - "&a▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
     - "&7"
@@ -93,6 +94,7 @@ messages.others:
   no-account: "&6The game account has been deleted."
   unknown-account: "&cThe player couldn't be found."
   received: "&6You've received &a%money% &6from the game &7%name%&6."
+  vanish: "&cYou can't join the game in vanish mode."
 
 messages.help:
   - "&7&m---------------------------------------------------"

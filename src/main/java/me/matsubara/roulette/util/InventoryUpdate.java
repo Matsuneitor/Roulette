@@ -21,7 +21,7 @@
  */
 package me.matsubara.roulette.util;
 
-import me.matsubara.roulette.util.xseries.ReflectionUtils;
+import com.cryptomorin.xseries.ReflectionUtils;
 import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -164,7 +164,7 @@ public final class InventoryUpdate {
                             packetPlayOutOpenWindowConstructor.newInstance(windowId, object, title, size);
 
             // Send packet.
-            ReflectionUtils.sendPacket(player, packet);
+            ReflectionUtils.sendPacketSync(player, packet);
 
             // Update inventory.
             updateInventory.invoke(entityPlayer, activeContainer);

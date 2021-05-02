@@ -21,6 +21,10 @@ public final class EntityDamageByEntity implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (event.getDamager().hasMetadata("isRoulette")) {
+            event.setCancelled(true);
+        }
+
         if (!(event.getEntity() instanceof ArmorStand)) return;
 
         ArmorStand stand = (ArmorStand) event.getEntity();

@@ -1,15 +1,13 @@
 package me.matsubara.roulette.trait;
 
+import com.cryptomorin.xseries.XMaterial;
 import me.matsubara.roulette.data.Part;
 import me.matsubara.roulette.event.NPCLookCloseModifiedChangeTargetEvent;
 import me.matsubara.roulette.file.Configuration;
 import me.matsubara.roulette.game.Game;
+import me.matsubara.roulette.npc.NPC;
 import me.matsubara.roulette.util.RUtils;
-import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
-import net.citizensnpcs.api.command.CommandConfigurable;
-import net.citizensnpcs.api.command.CommandContext;
-import net.citizensnpcs.api.command.exception.CommandException;
 import net.citizensnpcs.api.event.NPCLeftClickEvent;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
@@ -23,33 +21,33 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.metadata.MetadataValue;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.BlockIterator;
+import org.bukkit.util.Vector;
 
 import java.util.*;
 
-@SuppressWarnings("unused")
 @TraitName("lookclosemodified")
-public final class LookCloseModified extends Trait implements Toggleable, CommandConfigurable {
+public final class LookCloseModified extends Trait implements Toggleable {
+
     @Persist("disablewhilenavigating")
-    private boolean disableWhileNavigating;
+    private final boolean disableWhileNavigating;
     @Persist("enabled")
     private boolean enabled;
     @Persist
-    private boolean enableRandomLook;
+    private final boolean enableRandomLook;
     private Player lookingAt;
     @Persist
-    private int randomLookDelay;
+    private final int randomLookDelay;
     @Persist
-    private float[] randomPitchRange;
+    private final float[] randomPitchRange;
     @Persist
-    private float[] randomYawRange;
+    private final float[] randomYawRange;
     private double range;
     @Persist("realisticlooking")
     private boolean realisticLooking;
@@ -62,178 +60,124 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
 
     public LookCloseModified() {
         super("lookclosemodified");
-        this.disableWhileNavigating = Setting.DISABLE_LOOKCLOSE_WHILE_NAVIGATING.asBoolean();
-        this.enabled = Setting.DEFAULT_LOOK_CLOSE.asBoolean();
-        this.enableRandomLook = Setting.DEFAULT_RANDOM_LOOK_CLOSE.asBoolean();
-        this.randomLookDelay = Setting.DEFAULT_RANDOM_LOOK_DELAY.asInt();
+        this.disableWhileNavigating = true;
+        this.enabled = false;
+        this.enableRandomLook = false;
+        this.randomLookDelay = 60;
         this.randomPitchRange = new float[]{-10.0F, 0.0F};
         this.randomYawRange = new float[]{0.0F, 360.0F};
-        this.range = Setting.DEFAULT_LOOK_CLOSE_RANGE.asDouble();
-        this.realisticLooking = Setting.DEFAULT_REALISTIC_LOOKING.asBoolean();
         this.game = null;
         this.viewers = new HashMap<>();
     }
 
     private boolean canSee(Player player) {
-        return this.realisticLooking && this.npc.getEntity() instanceof LivingEntity ? ((LivingEntity) this.npc.getEntity()).hasLineOfSight(player) : player != null && player.isValid();
-    }
-
-    public boolean canSeeTarget() {
-        return this.canSee(this.lookingAt);
-    }
-
-    public void configure(CommandContext args) throws CommandException {
-        try {
-            this.range = args.getFlagDouble("range", args.getFlagDouble("r", this.range));
-        } catch (NumberFormatException var3) {
-            throw new CommandException("citizens.commands.invalid-number");
-        }
-
-        this.realisticLooking = args.hasFlag('r');
+        return realisticLooking && npc.getEntity() instanceof LivingEntity ? ((LivingEntity) npc.getEntity()).hasLineOfSight(player) : player != null && player.isValid();
     }
 
     public boolean disableWhileNavigating() {
-        return this.disableWhileNavigating;
+        return disableWhileNavigating;
     }
 
     public void findNewTarget() {
-        double min = this.range * this.range;
-        Player old = this.lookingAt;
+        double min = range * range;
+        Player old = lookingAt;
 
-        for (Entity entity : this.npc.getEntity().getNearbyEntities(this.range, this.range, this.range)) {
+        for (Entity entity : npc.getEntity().getNearbyEntities(range, range, range)) {
             if (entity instanceof Player) {
                 Player player = (Player) entity;
                 Location location = player.getLocation(CACHE_LOCATION);
                 if (location.getWorld() == NPC_LOCATION.getWorld()) {
                     double dist = location.distanceSquared(NPC_LOCATION);
-                    if (dist <= min && CitizensAPI.getNPCRegistry().getNPC(entity) == null && !this.isInvisible(player)) {
+                    if (dist <= min && CitizensAPI.getNPCRegistry().getNPC(entity) == null && !isInvisible(player)) {
                         min = dist;
-                        this.lookingAt = player;
+                        lookingAt = player;
                     }
                 }
             }
         }
 
-        if (old != this.lookingAt) {
-            NPCLookCloseModifiedChangeTargetEvent event = new NPCLookCloseModifiedChangeTargetEvent(this.npc, old, this.lookingAt);
+        if (old != lookingAt) {
+            NPCLookCloseModifiedChangeTargetEvent event = new NPCLookCloseModifiedChangeTargetEvent(npc, old, lookingAt);
             Bukkit.getPluginManager().callEvent(event);
-            if (this.lookingAt != event.getNewTarget() && event.getNewTarget() != null && !this.isValid(event.getNewTarget())) {
+            if (lookingAt != event.getNewTarget() && event.getNewTarget() != null && !isValid(event.getNewTarget())) {
                 return;
             }
 
-            this.lookingAt = event.getNewTarget();
+            lookingAt = event.getNewTarget();
         }
 
     }
 
-    public int getRandomLookDelay() {
-        return this.randomLookDelay;
-    }
-
-    public float[] getRandomLookPitchRange() {
-        return this.randomPitchRange;
-    }
-
-    public float[] getRandomLookYawRange() {
-        return this.randomYawRange;
-    }
-
-    public double getRange() {
-        return this.range;
-    }
-
-    public Player getTarget() {
-        return this.lookingAt;
-    }
-
     private boolean isEqual(float[] array) {
-        return (double) Math.abs(array[0] - array[1]) < 0.001D;
+        return (double) Math.abs(array[0] - array[1]) < 0.001d;
     }
 
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private boolean isInvisible(Player player) {
-        return player.getGameMode() == GameMode.SPECTATOR || player.hasPotionEffect(PotionEffectType.INVISIBILITY) || this.isPluginVanished(player) || !this.canSee(player);
-    }
-
-    private boolean isPluginVanished(Player player) {
-        Iterator<MetadataValue> iterator = player.getMetadata("vanished").iterator();
-
-        MetadataValue meta;
-        do {
-            if (!iterator.hasNext()) {
-                return false;
-            }
-
-            meta = iterator.next();
-        } while (!meta.asBoolean());
-
-        return true;
-    }
-
-    public boolean isRandomLook() {
-        return this.enableRandomLook;
+        return player.getGameMode() == GameMode.SPECTATOR || player.hasPotionEffect(PotionEffectType.INVISIBILITY) || RUtils.isPluginVanished(player) || !canSee(player);
     }
 
     private boolean isValid(Player entity) {
-        return entity.isOnline() && entity.isValid() && entity.getWorld() == this.npc.getEntity().getWorld() && entity.getLocation(PLAYER_LOCATION).distanceSquared(NPC_LOCATION) < this.range * this.range && !this.isInvisible(entity);
+        return entity.isOnline() && entity.isValid() && entity.getWorld() == npc.getEntity().getWorld() && entity.getLocation(PLAYER_LOCATION).distanceSquared(NPC_LOCATION) < range * range && !isInvisible(entity);
     }
 
     public void load(DataKey key) {
-        this.range = key.getDouble("range");
+        range = key.getDouble("range");
     }
 
     public void lookClose(boolean lookClose) {
-        Util.faceEntity(this.npc.getEntity(), this.game.getParts().get(Part.NPC_TARGET));
-        this.enabled = lookClose;
+        Util.faceEntity(npc.getEntity(), game.getParts().get(Part.NPC_TARGET));
+        enabled = lookClose;
     }
 
     public void onDespawn() {
-        NPCLookCloseModifiedChangeTargetEvent event = new NPCLookCloseModifiedChangeTargetEvent(this.npc, this.lookingAt, null);
+        NPCLookCloseModifiedChangeTargetEvent event = new NPCLookCloseModifiedChangeTargetEvent(npc, lookingAt, null);
         Bukkit.getPluginManager().callEvent(event);
-        if (event.getNewTarget() != null && this.isValid(event.getNewTarget())) {
-            this.lookingAt = event.getNewTarget();
+        if (event.getNewTarget() != null && isValid(event.getNewTarget())) {
+            lookingAt = event.getNewTarget();
         } else {
-            this.lookingAt = null;
+            lookingAt = null;
         }
 
     }
 
     private void randomLook() {
         Random rand = new Random();
-        float pitch = this.isEqual(this.randomPitchRange) ? this.randomPitchRange[0] : rand.doubles(this.randomPitchRange[0], this.randomPitchRange[1]).iterator().next().floatValue();
-        float yaw = this.isEqual(this.randomYawRange) ? this.randomYawRange[0] : rand.doubles(this.randomYawRange[0], this.randomYawRange[1]).iterator().next().floatValue();
-        Util.assumePose(this.npc.getEntity(), yaw, pitch);
+        float pitch = isEqual(randomPitchRange) ? randomPitchRange[0] : rand.doubles(randomPitchRange[0], randomPitchRange[1]).iterator().next().floatValue();
+        float yaw = isEqual(randomYawRange) ? randomYawRange[0] : rand.doubles(randomYawRange[0], randomYawRange[1]).iterator().next().floatValue();
+        Util.assumePose(npc.getEntity(), yaw, pitch);
     }
 
     public void run() {
-        if (this.enabled && this.npc.isSpawned()) {
-            if (!this.npc.getNavigator().isNavigating() || !this.disableWhileNavigating()) {
-                this.npc.getEntity().getLocation(NPC_LOCATION);
-                if (this.tryInvalidateTarget()) {
-                    this.findNewTarget();
+        if (enabled && npc.isSpawned()) {
+            if (!npc.getNavigator().isNavigating() || !disableWhileNavigating()) {
+                npc.getEntity().getLocation(NPC_LOCATION);
+                if (tryInvalidateTarget()) {
+                    findNewTarget();
                 }
 
-                if (this.npc.getNavigator().isNavigating()) {
-                    this.npc.getNavigator().setPaused(this.lookingAt != null);
-                } else if (this.lookingAt == null && this.enableRandomLook && this.t <= 0) {
-                    this.randomLook();
-                    this.t = this.randomLookDelay;
+                if (npc.getNavigator().isNavigating()) {
+                    npc.getNavigator().setPaused(lookingAt != null);
+                } else if (lookingAt == null && enableRandomLook && t <= 0) {
+                    randomLook();
+                    t = randomLookDelay;
                 }
 
-                --this.t;
-                if (this.lookingAt != null && this.game != null && !game.getPlayers().contains(this.lookingAt.getUniqueId())) {
-                    if (!inCooldown(this.lookingAt.getUniqueId()) && Configuration.Config.NPC_INVITE.asBoolean()) {
-                        RUtils.handleMessage(this.lookingAt, this.game.getPlugin().getMessages().getRandomNPCMessage(npc, "invitations"));
-                        this.viewers.put(this.lookingAt.getUniqueId(), System.currentTimeMillis() + Configuration.Config.INVITE_INTERVAL.asLong());
+                --t;
+                if (lookingAt != null && game != null && !game.getPlayers().contains(lookingAt.getUniqueId())) {
+                    if (!inCooldown(lookingAt.getUniqueId()) && Configuration.Config.NPC_INVITE.asBoolean()) {
+                        RUtils.handleMessage(lookingAt, game.getPlugin().getMessages().getRandomNPCMessage(game.getNPC(), "invitations"));
+                        viewers.put(lookingAt.getUniqueId(), System.currentTimeMillis() + Configuration.Config.INVITE_INTERVAL.asLong());
                     }
 
-                    Util.faceEntity(this.npc.getEntity(), this.lookingAt);
-                    if (this.npc.getEntity().getType().name().equals("SHULKER")) {
-                        NMS.setPeekShulker(this.npc.getEntity(), 100 - (int) Math.floor(this.npc.getStoredLocation().distanceSquared(this.lookingAt.getLocation(PLAYER_LOCATION))));
+                    Util.faceEntity(npc.getEntity(), lookingAt);
+                    if (lookingAt.isSneaking() && !lookingAt.isFlying()) game.getNPC().setPose(NPC.Pose.SNEAKING);
+                    else if (game.getNPC().isSneaking()) game.getNPC().setPose(NPC.Pose.STANDING);
+                    if (npc.getEntity().getType().name().equals("SHULKER")) {
+                        NMS.setPeekShulker(npc.getEntity(), 100 - (int) Math.floor(npc.getStoredLocation().distanceSquared(lookingAt.getLocation(PLAYER_LOCATION))));
                     }
-
-                } else if (this.game != null) {
-                    Util.faceEntity(this.npc.getEntity(), this.game.getParts().get(Part.NPC_TARGET));
+                } else if (game != null) {
+                    Util.faceEntity(npc.getEntity(), game.getParts().get(Part.NPC_TARGET));
                 }
             }
         }
@@ -245,11 +189,11 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onNPCLeftClick(NPCLeftClickEvent event) {
-        if (!event.getNPC().equals(this.npc)) {
+        if (!event.getNPC().equals(npc)) {
             return;
         }
 
-        if (!event.getClicker().equals(this.lookingAt)) {
+        if (!event.getClicker().equals(lookingAt)) {
             return;
         }
 
@@ -257,7 +201,7 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
             return;
         }
 
-        Player target = getEntityInLineOfSight((Player) this.npc.getEntity());
+        Player target = getEntityInLineOfSight((Player) npc.getEntity());
 
         // If the NPC doesn't have a target, return.
         if (target == null) {
@@ -267,6 +211,51 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
         // If the target of the NPC is the current player, play hit animation.
         if (target.equals(event.getClicker())) {
             PlayerAnimation.ARM_SWING.play((Player) event.getNPC().getEntity());
+
+            // Ball can be null.
+            if (game.getPlugin().getConfiguration().getBall() == null) return;
+
+            // Both options must be true.
+            if (!Configuration.Config.NPC_IMITATE.asBoolean() || !Configuration.Config.NPC_PROJECTILE.asBoolean()) {
+                return;
+            }
+
+            Vector direction = ((Player) npc.getEntity()).getEyeLocation().getDirection().multiply(2.0d);
+            Location location = ((Player) npc.getEntity()).getEyeLocation().add(direction.getX(), direction.getY(), direction.getZ());
+
+            Projectile projectile = null;
+            EnderSignal signal = null;
+
+            switch (XMaterial.matchXMaterial(game.getPlugin().getConfiguration().getBall().getType())) {
+                case SNOWBALL:
+                    projectile = target.getWorld().spawn(location, Snowball.class);
+                    break;
+                case ENDER_PEARL:
+                    projectile = target.getWorld().spawn(location, EnderPearl.class);
+                    break;
+                case EGG:
+                    projectile = target.getWorld().spawn(location, Egg.class);
+                    break;
+                case FIRE_CHARGE:
+                    projectile = target.getWorld().spawn(location, Fireball.class);
+                    ((Fireball) projectile).setIsIncendiary(false);
+                    break;
+                case ENDER_EYE:
+                    signal = target.getWorld().spawn(location, EnderSignal.class);
+                    break;
+            }
+
+            if (projectile == null && signal == null) return;
+
+            if (projectile != null) {
+                projectile.setMetadata("isRoulette", new FixedMetadataValue(game.getPlugin(), true));
+                projectile.setShooter((ProjectileSource) npc.getEntity());
+                projectile.setVelocity(direction);
+            } else {
+                signal.setMetadata("isRoulette", new FixedMetadataValue(game.getPlugin(), true));
+                signal.setTargetLocation(target.getLocation());
+                signal.setDropItem(false);
+            }
         }
     }
 
@@ -302,30 +291,6 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
         return null;
     }
 
-    public void save(DataKey key) {
-        key.setDouble("range", this.range);
-    }
-
-    public void setDisableWhileNavigating(boolean set) {
-        this.disableWhileNavigating = set;
-    }
-
-    public void setRandomLook(boolean enableRandomLook) {
-        this.enableRandomLook = enableRandomLook;
-    }
-
-    public void setRandomLookDelay(int delay) {
-        this.randomLookDelay = delay;
-    }
-
-    public void setRandomLookPitchRange(float min, float max) {
-        this.randomPitchRange = new float[]{min, max};
-    }
-
-    public void setRandomLookYawRange(float min, float max) {
-        this.randomYawRange = new float[]{min, max};
-    }
-
     public void setRange(int range) {
         this.range = range;
     }
@@ -339,33 +304,33 @@ public final class LookCloseModified extends Trait implements Toggleable, Comman
     }
 
     public boolean toggle() {
-        this.enabled = !this.enabled;
-        return this.enabled;
+        enabled = !enabled;
+        return enabled;
     }
 
     public String toString() {
-        return "LookCloseModified{" + this.enabled + "}";
+        return "LookCloseModified{" + enabled + "}";
     }
 
     private boolean tryInvalidateTarget() {
-        if (this.lookingAt == null) {
+        if (lookingAt == null) {
             return true;
         } else {
-            if (!this.isValid(this.lookingAt)) {
-                NPCLookCloseModifiedChangeTargetEvent event = new NPCLookCloseModifiedChangeTargetEvent(this.npc, this.lookingAt, null);
+            if (!isValid(lookingAt)) {
+                NPCLookCloseModifiedChangeTargetEvent event = new NPCLookCloseModifiedChangeTargetEvent(npc, lookingAt, null);
                 Bukkit.getPluginManager().callEvent(event);
-                if (event.getNewTarget() != null && this.isValid(event.getNewTarget())) {
-                    this.lookingAt = event.getNewTarget();
+                if (event.getNewTarget() != null && isValid(event.getNewTarget())) {
+                    lookingAt = event.getNewTarget();
                 } else {
-                    this.lookingAt = null;
+                    lookingAt = null;
                 }
             }
 
-            return this.lookingAt == null;
+            return lookingAt == null;
         }
     }
 
-    public boolean useRealisticLooking() {
-        return this.realisticLooking;
+    public Player getTarget() {
+        return this.lookingAt;
     }
 }

@@ -9,6 +9,8 @@ import me.matsubara.roulette.Roulette;
 import me.matsubara.roulette.file.Configuration;
 import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.game.Game;
+import me.matsubara.roulette.gui.GUIType;
+import me.matsubara.roulette.listener.InventoryClick;
 import me.matsubara.roulette.util.RUtils;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.ArmorStand;
@@ -61,7 +63,7 @@ public final class SteerVehicle extends PacketAdapter {
         boolean dismount = booleans.read(1);
 
         // Check if the player is in steer cooldown. If true, return, since the packet PacketPlayInSteerVehicle is called too quickly.
-        if (inCooldown(player.getUniqueId(), steerCooldown)) {
+        if (isInCooldown(player.getUniqueId(), steerCooldown)) {
             if (dismount) event.setCancelled(true);
             return;
         }
@@ -71,7 +73,7 @@ public final class SteerVehicle extends PacketAdapter {
 
         // Left button.
         if (side > 0.0f) {
-            if (swapChair(player, game)) {
+            if (canSwapChair(player, game)) {
                 execute(() -> game.previousChair(player));
             } else if (game.getState().isSelecting()) {
                 execute(() -> game.previousChip(player.getUniqueId()));
@@ -80,7 +82,7 @@ public final class SteerVehicle extends PacketAdapter {
 
         // Right button.
         if (side < 0.0f) {
-            if (swapChair(player, game)) {
+            if (canSwapChair(player, game)) {
                 execute(() -> game.nextChair(player));
             } else if (game.getState().isSelecting()) {
                 execute(() -> game.nextChip(player.getUniqueId()));
@@ -89,7 +91,14 @@ public final class SteerVehicle extends PacketAdapter {
 
         // Shift button.
         if (dismount) {
-            if (inCooldown(player.getUniqueId(), dismountCooldown)) return;
+            // If @leave-confirm is true, open confirm GUI and return.
+            if (Configuration.Config.LEAVE_CONFIRM.asBoolean()) {
+                execute(() -> InventoryClick.openConfirmGUI(player, game, plugin.getConfiguration().getItem("shop", "exit", null), GUIType.CONFIRM_LEAVE));
+                event.setCancelled(true);
+                return;
+            }
+
+            if (isInCooldown(player.getUniqueId(), dismountCooldown)) return;
 
             // Send confirm message.
             if (!game.canLoseMoney()) {
@@ -105,7 +114,7 @@ public final class SteerVehicle extends PacketAdapter {
         steerCooldown.put(player.getUniqueId(), System.currentTimeMillis() + Configuration.Config.MOVE_CHIP_INTERVAL.asLong());
     }
 
-    private boolean swapChair(Player player, Game game) {
+    private boolean canSwapChair(Player player, Game game) {
         return (game.getState().isWaiting() || game.getState().isCountdown()) && (Configuration.Config.SWAP_CHAIR.asBoolean() || player.hasPermission("roulette.swap_chair"));
     }
 
@@ -113,7 +122,7 @@ public final class SteerVehicle extends PacketAdapter {
         plugin.getServer().getScheduler().runTask(plugin, runnable);
     }
 
-    public boolean inCooldown(UUID uuid, Map<UUID, Long> map) {
+    public boolean isInCooldown(UUID uuid, Map<UUID, Long> map) {
         return map.containsKey(uuid) && map.get(uuid) > System.currentTimeMillis();
     }
 }

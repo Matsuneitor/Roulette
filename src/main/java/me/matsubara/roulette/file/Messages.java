@@ -1,8 +1,8 @@
 package me.matsubara.roulette.file;
 
 import me.matsubara.roulette.Roulette;
+import me.matsubara.roulette.npc.NPC;
 import me.matsubara.roulette.util.RUtils;
-import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -157,6 +157,7 @@ public final class Messages {
         NO_ACCOUNT("messages.others.no-account"),
         UNKNOWN_ACCOUNT("messages.others.unknown-account"),
         RECEIVED("messages.others.received"),
+        VANISH("messages.others.vanish"),
         HELP("messages.help");
 
         private final String path;

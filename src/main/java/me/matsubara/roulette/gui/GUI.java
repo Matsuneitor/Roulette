@@ -19,6 +19,7 @@ import java.util.Map;
 public final class GUI {
 
     private final Roulette plugin;
+    private final Game game;
 
     private final Player player;
     private final Inventory inventory;
@@ -27,8 +28,9 @@ public final class GUI {
 
     private final ItemStack background, previous, money, betAll, exit, next;
 
-    public GUI(Roulette plugin, Player player, Game game) {
-        this.plugin = plugin;
+    public GUI(Player player, Game game) {
+        this.plugin = game.getPlugin();
+        this.game = game;
         this.player = player;
 
         this.inventory = plugin.getServer().createInventory(new GUIHolder(this, GUIType.CHIP, game), 36);
@@ -68,7 +70,7 @@ public final class GUI {
         if (current > 0) inventory.setItem(19, previous);
 
         inventory.setItem(22, money);
-        inventory.setItem(23, betAll);
+        if (game.isBetAll()) inventory.setItem(23, betAll);
         inventory.setItem(35, exit);
 
         // Next page button.
@@ -92,13 +94,15 @@ public final class GUI {
             String displayName = chip.getDisplayName() != null ? chip.getDisplayName() : plugin.getConfiguration().getChipDisplayName(price);
             List<String> lore = chip.getLore() != null ? chip.getLore() : plugin.getConfiguration().getChipLore();
 
-            inventory.setItem(slotIndex.get(index), new ItemBuilder(chip.getUrl())
+            ItemStack item = new ItemBuilder(chip.getUrl())
                     .setDisplayName(displayName)
                     .setLore(lore)
                     .plugin(plugin)
                     .setKey("fromRouletteMoney", price)
                     .setKey("fromRouletteChip", chip.getName())
-                    .build());
+                    .build();
+
+            inventory.setItem(slotIndex.get(index), item);
         }
 
         // Update title.

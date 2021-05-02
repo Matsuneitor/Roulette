@@ -12,18 +12,26 @@
 # This also will show a progress bar to the player when doing creating a new game to check the progress.
 debug: true
 
+# The skin that the croupiers will use in the game (only for NPCLib).
+skin:
+  texture: "ewogICJ0aW1lc3RhbXAiIDogMTU5MTkyMjkzMTIxMiwKICAicHJvZmlsZUlkIiA6ICI3NTE0NDQ4MTkxZTY0NTQ2OGM5NzM5YTZlMzk1N2JlYiIsCiAgInByb2ZpbGVOYW1lIiA6ICJUaGFua3NNb2phbmciLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDcyOGJkYWI5ZDkwMTI0YmQxMWY4NmU1OTM3MzJkMmRjNWQ3NzY3YTYzZGE4MGQ3M2ZkYmM0NDU2NTY2YzcwMSIKICAgIH0KICB9Cn0="
+  signature: "SJbx/fmTpInWq+gr+A9Rh2BZnSFjvscYK/Pa8aqDoZ3DqXd9E+ocSayZtufnhgEz32UY4g24WBw6A80hJQWopQzmSotOjtK+iGUsjGpbI/M+vHa+jbR4Lygk2jEJ+fsacqJrxaS30LZUiz5C7mGAN35BtEeoIvFwDG7PHLP5ZJoys4gXhQA4cMLSxHAFurFtRMWYIPiGw5dnBMYYxGuKSHcEOBp63cO/JTWp+PaR1OrxKSHhbC5xg8KsMx5NPmakrSOFkQt/Yel/HMSpSOiQJBBcYTF2EGeOmnw1NVOaSu0R/lOefDBRL2Jr8G7zuLKwREi6Bi781hBTmh3lBSDP1ir86vG3APLdccQxo3Ug3Nd0j4CV4nAjvk20pQ+gV/eFbeg7N9auaF7LbiZ4lAk/owR4O2UUNczvqRGXwAg3KpGNHZfH3BSVUY+Vkd33430LZyCKUUwuYksQ08vVL9Uu/GwFaLHsoLypU9FsdpgPPk103AckQPn3pdrotYt7zjNX+wnMFAfJM/G9+ZT89weTEgUTzZdxY8/JHBc29nw3+MkzpFU0CbwnvTmAEp0LNwgIFTjDhzAfnkEJlUGa8r+BdeOeN5pWlyk8tga+ioUySGPVQcsBslvuGHEfLVA20RWPE3eRyMRMiUFhJ/mag5kdiEnM24Fm3ue7+j0+nCLkwQE="
+
 # Whether or not to enable the update checker.
 update-checker: true
 
 # The maximum distance that a NPC can look.
 look-distance: 15
 
+# If true, the NPC won't look players through walls.
+realistic-looking: true
+
 # Whether or not to allow players to swap chairs before the game starts. If false, you can bypass this with 'roulette.swap_chair' permission.
 # if false, players will be seated next to each other.
 swap-chair: true
 
 # Whether or not to instantly explode the fireworks.
-instant-explode: false
+instant-explode: true
 
 # Whether or not to fix the camera when changing chairs so the player looks forward.
 fix-chair-camera: true
@@ -32,16 +40,25 @@ fix-chair-camera: true
 npc-look-around: true
 
 # Whether or not to allow the NPC to imitate the movements made by the target player (@npc-look-around must be true).
-# At the moment, the NPC only imitate the player's hits.
 npc-imitate: true
 
 # Whether or not to allow croupiers to invite nearby players to play a game (@npc-look-around must be true).
 npc-invite: true
 
+# If the true, when a player wins a game the NPC will play the hurt animation, if nobody wins, the NPC will start jumping (as a victory).
+npc-reaction: true
+
+# If the croupeir ball is a projectile (ENDER_PEARL/SNOWBALL/EGG/FIRE_CHARGE/ENDER_EYE) the npc will throw it to players (with no damage) when hitting him (@npc-imitate must be true).
+npc-projectile: true
+
 # After how long does the NPC invite players to play (in millis).
 invite-interval: 300000
 
+# If true, a confirm GUI will appear to the player when trying to leave a game by shifting.
+leave-confirm: true
+
 # The allowed time for confirm the leave of the game (in millis), if that time expire, you need to shift twice again.
+# Ignored if @leave-confirm is true.
 leave-confirm-interval: 2000
 
 # The delay before you can move your chip (in millis).
@@ -51,11 +68,12 @@ croupier-ball:
   # The material that'll be used as a ball by the croupier.
   material: SNOWBALL
   # The speed of the ball (rotation speed).
-  speed: 30.0
+  speed: 35.0
 
 # The countdown of each part of the game (in seconds), must be a multiple of 5.
 countdown:
   # Starts after reaching the minimum amount of players.
+  # This time is set by default, you can change it for each game with the game editor GUI, by right clicking an NPC.
   waiting: 30
   # Starts at the end of the previous countdown, time for players to choose their bet.
   selecting: 30
@@ -86,6 +104,13 @@ sound.swap-chair: ENTITY_PLAYER_ATTACK_CRIT
 
 # The sound that'll play when selecting a slot in the table (when moving the chip).
 sound.select: BLOCK_WOOL_PLACE
+
+# Here you can disable the slots of the table that you want.
+# https://github.com/Matsuneitor/Roulette/blob/master/src/main/java/me/matsubara/roulette/data/Slot.java
+disabled-slots: []
+
+# Whether or not to give a map to the winner of a game (coming soon).
+map-image: true
 
 # The action bar message that'll be sent to the player when creating a table.
 # %percent% - the current percent.
@@ -165,9 +190,15 @@ not-enough-money:
   display-name: "&c¡NOT ENOUGH MONEY!"
   lore: []
 
+# The state text using in some variables.
+state:
+  enabled: "&aenabled"
+  disabled: "&cdisabled"
+
 # Here you can modify each item within the inventory of the game editor, accessible by right-clicking an NPC.
 # %name% - the name of the game. (@title)
 # %player% - the name of the player. (@account.display-name and no-account.display-name)
+# %state% - the state of the bet-all option. (@bet-all.display-name)
 game-menu:
   title: "Game: %name%"
   account:
@@ -208,6 +239,72 @@ game-menu:
       - "&6Right click to reduce."
       - "&7"
       - "&c(changing this will restart the game)"
+  start-time:
+    material: CLOCK
+    display-name: "&aStart time: &e%seconds% seconds"
+    lore:
+      - "&7When the minimum number of players"
+      - "&7required is reached, the game will start"
+      - "&7at the time that has been set."
+      - "&7"
+      - "&6Click to reduce 5 seconds."
+      - "&6Right click to increase 5 seconds."
+  la-partage:
+    material: MOJANG_BANNER_PATTERN
+    display-name: "&aLa Partage"
+    lore:
+      - "&7Once a single zero is spun, the"
+      - "&7even-money bet will immediately be"
+      - "&7divided by two."
+      - "&7"
+      - "&7This way 50% of the bet will be"
+      - "&7recovered to the player, while the"
+      - "&7other 50% will be surrendered"
+      - "&7to the house."
+      - "&7"
+      - "&6Click to enable/disable."
+      - "&c(Coming soon)"
+    attributes:
+      - HIDE_POTION_EFFECTS # Hide banner attribute, for some reason use HIDE_POTION_EFFECTS instead of HIDE_ATTRIBUTES.
+  en-prison:
+    material: MOJANG_BANNER_PATTERN
+    display-name: "&aEn Prison"
+    lore:
+      - "&7Gives players an opportunity to"
+      - "&7recovertheir even-money stakes"
+      - "&7after the zero is spun."
+      - "&7"
+      - "&7The stake remains on the losing"
+      - "&7even-money bet for the next spin"
+      - "&7and if the player wins the second"
+      - "&7time around, they get their original"
+      - "&7stake back."
+      - "&7"
+      - "&6Click to enable/disable."
+      - "&c(Coming soon)"
+    attributes:
+      - HIDE_POTION_EFFECTS
+  surrender:
+    material: MOJANG_BANNER_PATTERN
+    display-name: "&aSurrender"
+    lore:
+      - "&7It's basically the same as La Partage"
+      - "&7as it is enforced whenever 0 or 00 win,"
+      - "&7in which case the player “surrenders”"
+      - "&7half of their original stake and"
+      - "&7retains the rest."
+      - "&7"
+      - "&6Click to enable/disable."
+      - "&c(Coming soon)"
+    attributes:
+      - HIDE_POTION_EFFECTS
+  bet-all:
+    url: "e36e94f6c34a35465fce4a90f2e25976389eb9709a12273574ff70fd4daa6852"
+    material: PLAYER_HEAD
+    display-name: "&eBet all: %state%"
+    lore:
+      - "&7Allows players to bet all their money."
+      - "&6Click to enable/disable."
   close:
     material: BARRIER
     display-name: "&cClose / delete"

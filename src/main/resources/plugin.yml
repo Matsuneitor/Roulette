@@ -4,8 +4,9 @@ main: me.matsubara.roulette.Roulette
 api-version: 1.13
 authors: [Matsubara]
 description: The classic casino game now in Minecraft, no need for texture packs.
-depend: [Citizens, HolographicDisplays, ProtocolLib, Vault]
-softdepend: [Multiverse-Core]
+depend: [ProtocolLib, Vault]
+softdepend: [Citizens, NPCLibPlugin, HolographicDisplays, CMI, Multiverse-Core, ClearLag, PlaceholderAPI]
+load: POSTWORLD
 
 commands:
   roulette:

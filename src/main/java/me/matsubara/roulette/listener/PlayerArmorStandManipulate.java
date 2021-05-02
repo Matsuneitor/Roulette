@@ -32,6 +32,7 @@ public final class PlayerArmorStandManipulate implements Listener {
         NamespacedKey key = new NamespacedKey(plugin, "fromRoulette");
         if (!container.has(key, PersistentDataType.STRING)) return;
 
+        // Check if the game exists.
         Game game = plugin.getGames().getGameByName(container.get(key, PersistentDataType.STRING));
 
         Player player = event.getPlayer();

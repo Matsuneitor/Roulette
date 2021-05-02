@@ -5,7 +5,6 @@ import me.matsubara.roulette.file.Configuration;
 import me.matsubara.roulette.file.Messages;
 import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.gui.GUI;
-import me.matsubara.roulette.trait.LookCloseModified;
 import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -26,7 +25,7 @@ public final class Starting extends BukkitRunnable {
     public Starting(Roulette plugin, Game game) {
         this.plugin = plugin;
         this.game = game;
-        this.time = Configuration.Config.COUNTDOWN_WAITING.asInt();
+        this.time = game.getStartTime();
     }
 
     @Override
@@ -39,7 +38,12 @@ public final class Starting extends BukkitRunnable {
             // Open GUI to all the players in the game.
             for (UUID uuid : game.getPlayers()) {
                 Player player = Bukkit.getPlayer(uuid);
-                if (player != null) new GUI(plugin, player, game);
+                if (player != null) new GUI(player, game);
+            }
+
+            // If the NPC is looking around, stop it.
+            if (Configuration.Config.NPC_LOOK_AROUND.asBoolean()) {
+                game.getNPC().lookAround(game.getNPC(), false);
             }
 
             // Start selecting runnable.
@@ -47,10 +51,6 @@ public final class Starting extends BukkitRunnable {
             select.runTaskTimer(plugin, 0L, 20L);
             game.setSelectRunnable(select);
 
-            // If the NPC is looking around, stop it.
-            if (Configuration.Config.NPC_LOOK_AROUND.asBoolean()) {
-                game.getNPC().getOrAddTrait(LookCloseModified.class).lookClose(false);
-            }
             cancel();
             return;
         }

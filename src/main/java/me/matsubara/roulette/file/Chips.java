@@ -71,11 +71,11 @@ public final class Chips {
     }
 
     private boolean hasDisplayName(String path) {
-        return getConfig().contains("chips." + path + ".display-name", false);
+        return getConfig().get("chips." + path + ".display-name") != null;
     }
 
     private boolean hasLore(String path) {
-        return getConfig().contains("chips." + path + ".lore", false);
+        return getConfig().get("chips." + path + ".lore") != null;
     }
 
     private String getDisplayName(String path) {
