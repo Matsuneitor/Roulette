@@ -36,12 +36,15 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Entity;
+import org.bukkit.event.Listener;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.reflections.Reflections;
 
+import java.io.File;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
@@ -161,9 +164,17 @@ public final class Roulette extends JavaPlugin {
         manager.registerEvents(new InventoryClose(this), this);
         manager.registerEvents(new PlayerArmorStandManipulate(this), this);
         manager.registerEvents(new PlayerChangedWorld(this), this);
+        //manager.registerEvents(new PlayerItemHeld(this), this);
         manager.registerEvents(new PlayerJoin(this), this);
         manager.registerEvents(new PlayerJump(this), this);
         manager.registerEvents(new PlayerQuit(this), this);
+
+        /*
+        // Save image if doens't exist.
+        File image = new File(getDataFolder(), "image.png");
+        if (!image.exists()) saveResource("image.png", false);*/
+
+        // registerListeners();
 
         chips = new Chips(this);
         configuration = new Configuration(this);
@@ -247,6 +258,17 @@ public final class Roulette extends JavaPlugin {
             if (!hasDependency(plugin)) return false;
         }
         return true;
+    }
+
+    private void registerListeners() {
+        for (Class<?> listenerClass : new Reflections(getClass().getPackage().getName() + ".listener").getSubTypesOf(Listener.class)) {
+            try {
+                Listener listener = (Listener) listenerClass.getDeclaredConstructor(Roulette.class).newInstance(this);
+                getServer().getPluginManager().registerEvents(listener, this);
+            } catch (ReflectiveOperationException exception) {
+                exception.printStackTrace();
+            }
+        }
     }
 
     /**

@@ -7,6 +7,7 @@ import me.matsubara.roulette.game.Game;
 import me.matsubara.roulette.game.GameData;
 import me.matsubara.roulette.game.GameType;
 import me.matsubara.roulette.util.RUtils;
+import me.matsubara.roulette.util.map.MapBuilder;
 import org.apache.commons.lang.ArrayUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -18,11 +19,17 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.map.MinecraftFont;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.StringUtil;
 
 import javax.annotation.Nullable;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,6 +70,24 @@ public final class Main implements CommandExecutor, TabCompleter {
         Player player = (Player) sender;
 
         if (args.length == 0) {
+
+           /* try {
+                BufferedImage image = ImageIO.read(new File(plugin.getDataFolder(), "image.png"));
+                // TODO: Just testing map.
+
+                ItemStack item = new MapBuilder()
+                        .setRenderOnce(true)
+                        .setImage(image, true)
+                        .addText(0, 0, MinecraftFont.Font, player.getName())
+                        .addText(0, 0, MinecraftFont.Font, "$50000")
+                        .build()
+                        .getItem();
+
+                player.getInventory().addItem(item);
+            } catch (IOException exception) {
+                exception.printStackTrace();
+            }*/
+
             if (!hasPermission(player, "roulette.help")) return true;
             Messages.Message.HELP.asList().forEach(line -> player.sendMessage(RUtils.translate(line)));
             return true;

@@ -19,7 +19,6 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -47,37 +46,7 @@ public final class Games {
         this.gameDatas = new ArrayList<>();
         this.games = new HashSet<>();
         this.isRunning = false;
-        if (!hasMultiverse()) load();
-    }
-
-    private boolean hasMultiverse() {
-        if (!Bukkit.getPluginManager().isPluginEnabled("Multiverse-Core")) return false;
-
-        // If the server is using MC, then we'll wait until every world has been loaded.
-        MultiverseCore core = (MultiverseCore) Bukkit.getPluginManager().getPlugin("Multiverse-Core");
-        if (core == null) return false;
-
-        MVWorldManager manager = core.getMVWorldManager();
-
-        // If all worlds has been loaded, then load every game.
-        if (manager.getUnloadedWorlds().isEmpty()) {
-            load();
-            return true;
-        }
-
-        logger.info("Multiverse-Core has been detected, waiting for all worlds to be loaded...");
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (manager.getUnloadedWorlds().isEmpty()) {
-                    logger.info("All the worlds have been loaded, ready to load the games!");
-                    load();
-                    cancel();
-                }
-            }
-        }.runTaskTimer(plugin, 0L, 20L);
-        return true;
+        load();
     }
 
     private void load() {
@@ -88,19 +57,21 @@ public final class Games {
         configuration = new YamlConfiguration();
         try {
             configuration.load(file);
-
-            // Remove entities from MC worlds, if present.
-            if (Bukkit.getPluginManager().isPluginEnabled("Multiverse-Core")) {
-                MultiverseCore core = (MultiverseCore) Bukkit.getPluginManager().getPlugin("Multiverse-Core");
-                if (core != null) {
-                    MVWorldManager manager = core.getMVWorldManager();
-                    plugin.removeEntities(manager.getMVWorlds().stream().map(MultiverseWorld::getCBWorld).collect(Collectors.toList()));
-                }
-            }
-
+            removeEntities();
             update(false);
         } catch (IOException | InvalidConfigurationException exception) {
             exception.printStackTrace();
+        }
+    }
+
+    private void removeEntities() {
+        // Remove entities from MC worlds, if present.
+        if (Bukkit.getPluginManager().isPluginEnabled("Multiverse-Core")) {
+            MultiverseCore core = (MultiverseCore) Bukkit.getPluginManager().getPlugin("Multiverse-Core");
+            if (core != null) {
+                MVWorldManager manager = core.getMVWorldManager();
+                plugin.removeEntities(manager.getMVWorlds().stream().map(MultiverseWorld::getCBWorld).collect(Collectors.toList()));
+            }
         }
     }
 

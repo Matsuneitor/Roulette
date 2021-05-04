@@ -306,4 +306,12 @@ public enum Part {
 
         return values;
     }
+
+    public static Part[] getValues(boolean isEuropean) {
+        return isEuropean ? EUROPEAN : AMERICAN;
+    }
+
+    public boolean isBorder() {
+        return name().startsWith("BORDER");
+    }
 }
